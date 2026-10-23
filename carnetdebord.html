@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>EPS Joliot Curie - Carnet de bord</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
 :root{
   --bg:#eef0f9;
@@ -857,6 +858,95 @@ function exportBackup(){
   a.download = 'carnetdebord_sauvegarde_'+todayISO()+'.json';
   document.body.appendChild(a); a.click(); a.remove();
 }
+function safeSheetName(name){
+  return String(name).replace(/[:\\/?*\[\]]/g,' ').trim().slice(0,31) || 'Feuille';
+}
+function appelCellText(ap, studentId){
+  const rec = ap.records[studentId] || {presence:'P', incidents:[]};
+  let cell = PRESENCE_LABEL[rec.presence] || 'P';
+  if(rec.incidents && rec.incidents.length) cell += ' ('+rec.incidents.join(',')+')';
+  return cell;
+}
+function exportClassExcel(tabId){
+  if(typeof XLSX === 'undefined'){
+    alert("Le module d'export Excel n'a pas pu se charger (il nécessite une connexion Internet au premier export). Vérifiez votre connexion et réessayez.");
+    return;
+  }
+  const tab = state.tabs[tabId];
+  const students = sortedStudents(tab.students);
+  const wb = XLSX.utils.book_new();
+
+  const rosterRows = [['Nom Prénom', ...tab.fields.map(f=>f.label)]];
+  students.forEach(s=> rosterRows.push([s.nomPrenom, ...tab.fields.map(f=>s[f.key]||'')]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rosterRows), safeSheetName('Élèves'));
+
+  (tab.activityOrder||[]).forEach(actName=>{
+    const act = tab.activities[actName];
+    const appelRows = [['Élève', ...act.appels.map(ap=>fmtDateFR(ap.date))]];
+    students.forEach(s=>{
+      appelRows.push([s.nomPrenom, ...act.appels.map(ap=>appelCellText(ap, s.id))]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(appelRows), safeSheetName(actName+' Appel'));
+
+    if(act.evaluations){
+      const cols = recapColumns(tab, act);
+      const recapRows = [['Élève', ...cols.map(c=>c.label)]];
+      students.forEach(s=> recapRows.push([s.nomPrenom, ...cols.map(c=>c.get(s)||'')]));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(recapRows), safeSheetName(actName+' Récap'));
+    }
+  });
+
+  XLSX.writeFile(wb, 'carnetdebord_'+normalize(tab.name).replace(/\s+/g,'_')+'_'+todayISO()+'.xlsx');
+}
+function exportClassPDF(tabId){
+  const tab = state.tabs[tabId];
+  const students = sortedStudents(tab.students);
+  let html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${escapeHtml(tab.name)} — Carnet de bord</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;margin:20px;}
+    h1{font-size:18px;margin-bottom:4px;}
+    h2{font-size:14px;margin-top:26px;border-bottom:2px solid #333;padding-bottom:4px;}
+    table{border-collapse:collapse;width:100%;margin-bottom:10px;}
+    th,td{border:1px solid #999;padding:3px 5px;text-align:center;}
+    th{background:#eee;}
+    td.name,th.name{text-align:left;white-space:nowrap;}
+    @media print{ table{page-break-inside:auto;} tr{page-break-inside:avoid;} }
+  </style></head><body>
+  <h1>${escapeHtml(tab.name)} — Carnet de bord</h1>
+  <p>Export du ${fmtDateFR(todayISO())}</p>
+  <h2>Liste des élèves</h2>
+  <table><thead><tr><th class="name">Nom Prénom</th>${tab.fields.map(f=>`<th>${escapeHtml(f.label)}</th>`).join('')}</tr></thead><tbody>`;
+  students.forEach(s=>{
+    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>${tab.fields.map(f=>`<td>${escapeHtml(s[f.key]||'')}</td>`).join('')}</tr>`;
+  });
+  html += `</tbody></table>`;
+
+  (tab.activityOrder||[]).forEach(actName=>{
+    const act = tab.activities[actName];
+    html += `<h2>${escapeHtml(actName)} — Appel</h2><table><thead><tr><th class="name">Élève</th>${act.appels.map(ap=>`<th>${fmtDateFR(ap.date)}</th>`).join('')}</tr></thead><tbody>`;
+    students.forEach(s=>{
+      html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>${act.appels.map(ap=>`<td>${escapeHtml(appelCellText(ap, s.id))}</td>`).join('')}</tr>`;
+    });
+    html += `</tbody></table>`;
+
+    if(act.evaluations){
+      const cols = recapColumns(tab, act);
+      html += `<h2>${escapeHtml(actName)} — Récapitulatif des évaluations</h2><table><thead><tr><th class="name">Élève</th>${cols.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}</tr></thead><tbody>`;
+      students.forEach(s=>{
+        html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>${cols.map(c=>`<td>${escapeHtml(c.get(s)||'')}</td>`).join('')}</tr>`;
+      });
+      html += `</tbody></table>`;
+    }
+  });
+  html += `</body></html>`;
+
+  const win = window.open('', '_blank');
+  if(!win){ alert("Impossible d'ouvrir la fenêtre d'impression (bloqueur de pop-up ?). Autorisez les pop-up pour ce site et réessayez."); return; }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>{ win.focus(); win.print(); }, 300);
+}
 function restoreBackup(ev){
   const file = ev.target.files[0];
   if(!file) return;
@@ -953,6 +1043,8 @@ function renderEleves(tab){
     <div class="toolbar">
       <h2 style="margin:0;flex:1;">Liste des élèves — ${escapeHtml(tab.name)} (${students.length})</h2>
       <button class="btn secondary small" onclick="addStudentManual('${tab.id}')">+ Ajouter un élève</button>
+      <button class="btn secondary small" onclick="exportClassExcel('${tab.id}')">📊 Exporter Excel</button>
+      <button class="btn secondary small" onclick="exportClassPDF('${tab.id}')">🖨 Exporter PDF</button>
       <button class="btn secondary small" onclick="renameTab('${tab.id}')">✎ Renommer ${tab.kind==='classe'?'la classe':'le groupe'}</button>
       <button class="btn danger small" onclick="deleteTab('${tab.id}')">🗑 Supprimer ${tab.kind==='classe'?'cette classe':'ce groupe'}</button>
     </div>
@@ -1612,9 +1704,8 @@ function levelAverage(values){
   const avg = Math.round(nums.reduce((a,b)=>a+b,0)/nums.length);
   return {4:'TB',3:'S',2:'F',1:'I'}[avg] || '';
 }
-function renderRecap(tab, act, activityLabel){
+function recapColumns(tab, act){
   const ev = act.evaluations;
-  const students = sortedStudents(tab.students);
   const cols = [
     {label:'Éch. théorie', color:EVAL_CAT_COLOR.echauffement, get:(s)=>{
       if(tab.niveau==='4'){
@@ -1634,6 +1725,11 @@ function renderRecap(tab, act, activityLabel){
   ev.custom.forEach((c,i)=>{
     cols.push({label:c.title, color:CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length], get:(s)=> levelAverage(c.seances.map(se=> se.marks[s.id]))});
   });
+  return cols;
+}
+function renderRecap(tab, act, activityLabel){
+  const students = sortedStudents(tab.students);
+  const cols = recapColumns(tab, act);
   const recapColor = EVAL_CAT_COLOR.recap;
   let html = `<div style="background:${lightTint(recapColor)};border-radius:16px;padding:4px;">
   <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${recapColor},${shadeColor(recapColor,-24)});"><h2>Récapitulatif — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}</h2>
