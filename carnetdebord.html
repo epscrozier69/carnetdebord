@@ -328,6 +328,7 @@ textarea.rawpaste{width:100%;min-height:140px;font-family:ui-monospace,Consolas,
 <body>
 <header class="app-header">
   <h1>🏐 EPS Joliot Curie — Carnet de bord</h1>
+  <button class="hbtn" id="syncStatusBtn" onclick="openSyncModal()">🔄 Synchro : non configurée</button>
   <button class="hbtn primary2" onclick="openImportModal()">+ Importer une classe / un groupe</button>
   <button class="hbtn" onclick="exportBackup()">💾 Exporter sauvegarde</button>
   <button class="hbtn" onclick="document.getElementById('restoreFile').click()">📂 Restaurer</button>
@@ -451,7 +452,10 @@ function migrateState(){
       }
       if(!act.baremes) act.baremes = [];
     });
-    (tab.students||[]).forEach(s=>{ if(!s.dispenses) s.dispenses = []; });
+    (tab.students||[]).forEach(s=>{
+      if(!s.dispenses) s.dispenses = [];
+      s.dispenses.forEach(d=>{ if('photo' in d) delete d.photo; });
+    });
   });
 }
 function activeDispenseOn(s, dateISO){
@@ -470,7 +474,175 @@ function loadState(){
   return defaultState();
 }
 function saveState(){
+  state.updatedAt = Date.now();
   try{ localStorage.setItem('cdb_state_v2', JSON.stringify(state)); }catch(e){ console.warn('save failed', e); }
+  if(typeof scheduleSyncPush==='function') scheduleSyncPush();
+}
+function saveStateLocalOnly(){
+  try{ localStorage.setItem('cdb_state_v2', JSON.stringify(state)); }catch(e){ console.warn('save failed', e); }
+}
+
+/* ============================= SYNC (Google Apps Script) ============================= */
+const SYNC_CONFIG_KEY = 'cdb_sync_appscript_v1';
+let syncConfig = loadSyncConfig();
+let syncState = {lastSyncAt:null, lastError:null, busy:false, pushTimer:null};
+
+function loadSyncConfig(){
+  try{
+    const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function saveSyncConfig(cfg){
+  syncConfig = cfg;
+  try{ localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(cfg)); }catch(e){}
+}
+function clearSyncConfig(){
+  syncConfig = null;
+  try{ localStorage.removeItem(SYNC_CONFIG_KEY); }catch(e){}
+  if(syncState.pushTimer) clearTimeout(syncState.pushTimer);
+  syncState = {lastSyncAt:null, lastError:null, busy:false, pushTimer:null};
+  updateSyncStatusUI();
+}
+function timeAgo(ts){
+  const s = Math.round((Date.now()-ts)/1000);
+  if(s<10) return "à l'instant";
+  if(s<60) return s+' s';
+  const m = Math.round(s/60);
+  if(m<60) return m+' min';
+  const h = Math.round(m/60);
+  return h+' h';
+}
+function updateSyncStatusUI(){
+  const btn = document.getElementById('syncStatusBtn');
+  if(!btn) return;
+  btn.title = syncState.lastError || '';
+  if(!syncConfig){ btn.textContent = '🔄 Synchro : non configurée'; return; }
+  if(syncState.busy){ btn.textContent = '🔄 Synchro en cours…'; return; }
+  if(syncState.lastError){ btn.textContent = '⚠ Erreur de synchro (survolez pour le détail)'; return; }
+  btn.textContent = syncState.lastSyncAt ? ('✅ Synchro à jour — '+timeAgo(syncState.lastSyncAt)) : '🔄 Synchro configurée';
+}
+async function pullFromAppsScript(){
+  if(!syncConfig) return;
+  syncState.busy = true; updateSyncStatusUI();
+  try{
+    const url = syncConfig.scriptUrl+'?key='+encodeURIComponent(syncConfig.key)+'&t='+Date.now();
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    if(data && data.error) throw new Error(data.error);
+    if(data && data.updatedAt){
+      const remoteUpdatedAt = data.updatedAt || 0;
+      const localUpdatedAt = state.updatedAt || 0;
+      if(remoteUpdatedAt > localUpdatedAt){
+        state = data;
+        saveStateLocalOnly();
+        renderApp();
+      }
+    }
+    syncState.lastError = null;
+    syncState.lastSyncAt = Date.now();
+  }catch(e){
+    syncState.lastError = String(e.message||e);
+    console.warn('Sync pull failed', e);
+  }
+  syncState.busy = false;
+  updateSyncStatusUI();
+}
+function scheduleSyncPush(){
+  if(!syncConfig) return;
+  if(syncState.pushTimer) clearTimeout(syncState.pushTimer);
+  syncState.pushTimer = setTimeout(()=>{ pushToAppsScript(); }, 2500);
+}
+async function pushToAppsScript(){
+  if(!syncConfig) return;
+  syncState.busy = true; updateSyncStatusUI();
+  try{
+    const url = syncConfig.scriptUrl+'?key='+encodeURIComponent(syncConfig.key);
+    const res = await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(state)
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    if(data && data.error) throw new Error(data.error);
+    syncState.lastError = null;
+    syncState.lastSyncAt = Date.now();
+  }catch(e){
+    syncState.lastError = String(e.message||e);
+    console.warn('Sync push failed', e);
+  }
+  syncState.busy = false;
+  updateSyncStatusUI();
+}
+async function testSyncConnection(cfg){
+  const url = cfg.scriptUrl+'?key='+encodeURIComponent(cfg.key)+'&t='+Date.now();
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const data = await res.json();
+  if(data && data.error) throw new Error(data.error==='unauthorized' ? 'Clé secrète incorrecte.' : data.error);
+  return true;
+}
+function openSyncModal(){
+  const cfg = syncConfig || {scriptUrl:'', key: uid()+uid()};
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this) closeModal()">
+    <div class="modal-box" style="max-width:560px;">
+      <h2>🔄 Synchronisation entre appareils</h2>
+      <p class="legend">Les données sont stockées via un script Google Apps Script. Déploie le script une fois (voir instructions), puis configure l'URL et la clé secrète identiques sur chaque appareil (tablette et ordinateur). En cas de modification sur les deux appareils, la dernière sauvegarde enregistrée écrase les précédentes.</p>
+      <div style="margin:8px 0;">
+        <label style="font-size:.75rem;color:var(--ink-soft);display:block;margin-bottom:3px;">URL de l'application web Apps Script</label>
+        <input id="syncScriptUrl" value="${escapeHtml(cfg.scriptUrl)}" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+      <div style="margin:8px 0;">
+        <label style="font-size:.75rem;color:var(--ink-soft);display:block;margin-bottom:3px;">Clé secrète (doit être identique dans le script et sur chaque appareil)</label>
+        <input id="syncKey" value="${escapeHtml(cfg.key)}" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;">
+      </div>
+      <p class="legend" id="syncTestResult" style="display:none;"></p>
+      <div class="modal-foot" style="justify-content:space-between;">
+        <div>${syncConfig?`<button class="btn danger small" onclick="disableSync()">Désactiver la synchro</button>`:''}</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn ghost" onclick="closeModal()">Fermer</button>
+          <button class="btn secondary" onclick="testSyncFromModal()">Tester la connexion</button>
+          <button class="btn" onclick="saveSyncFromModal()">Enregistrer et synchroniser</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function readSyncForm(){
+  return {
+    scriptUrl: document.getElementById('syncScriptUrl').value.trim(),
+    key: document.getElementById('syncKey').value.trim()
+  };
+}
+async function testSyncFromModal(){
+  const cfg = readSyncForm();
+  const resEl = document.getElementById('syncTestResult');
+  resEl.style.display='block';
+  resEl.textContent = 'Test en cours…';
+  if(!cfg.scriptUrl||!cfg.key){ resEl.textContent = "Renseigne l'URL du script et la clé secrète."; return; }
+  try{
+    await testSyncConnection(cfg);
+    resEl.textContent = '✅ Connexion réussie.';
+  }catch(e){
+    resEl.textContent = '❌ '+e.message;
+  }
+}
+async function saveSyncFromModal(){
+  const cfg = readSyncForm();
+  if(!cfg.scriptUrl||!cfg.key){ alert("Renseigne l'URL du script et la clé secrète."); return; }
+  saveSyncConfig(cfg);
+  syncState = {lastSyncAt:null, lastError:null, busy:false, pushTimer:null};
+  closeModal();
+  updateSyncStatusUI();
+  await pullFromAppsScript();
+  await pushToAppsScript();
+}
+function disableSync(){
+  if(!confirm('Désactiver la synchronisation sur cet appareil ? Les données resteront en local.')) return;
+  clearSyncConfig();
+  closeModal();
 }
 
 /* ============================= UTILS ============================= */
@@ -560,7 +732,6 @@ function openImportModal(){
   renderImportModal();
 }
 function closeModal(){
-  if(typeof stopDispenseCamera==='function') stopDispenseCamera();
   document.getElementById('modalRoot').innerHTML='';
   importState=null;
 }
@@ -927,10 +1098,10 @@ function exportClassExcel(tabId){
   students.forEach(s=> rosterRows.push([s.nomPrenom, ...tab.fields.map(f=>s[f.key]||'')]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rosterRows), safeSheetName('Élèves'));
 
-  const dispRows = [['Élève', 'Date début', 'Date fin', 'Type', 'Autorisé à ne pas assister', 'Photo jointe']];
+  const dispRows = [['Élève', 'Date début', 'Date fin', 'Type', 'Autorisé à ne pas assister']];
   students.forEach(s=>{
     (s.dispenses||[]).slice().sort((a,b)=> a.dateDebut.localeCompare(b.dateDebut)).forEach(d=>{
-      dispRows.push([s.nomPrenom, fmtDateFR(d.dateDebut), d.dateFin?fmtDateFR(d.dateFin):'', DISP_TYPE_LABEL[d.type]||d.type, d.autorise?'Oui':'Non', d.photo?'Oui':'Non']);
+      dispRows.push([s.nomPrenom, fmtDateFR(d.dateDebut), d.dateFin?fmtDateFR(d.dateFin):'', DISP_TYPE_LABEL[d.type]||d.type, d.autorise?'Oui':'Non']);
     });
   });
   if(dispRows.length>1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dispRows), safeSheetName('Dispenses'));
@@ -980,9 +1151,9 @@ function exportClassPDF(tabId){
   students.forEach(s=> (s.dispenses||[]).forEach(d=> dispList.push({s,d})));
   if(dispList.length){
     dispList.sort((a,b)=> a.d.dateDebut.localeCompare(b.d.dateDebut));
-    html += `<h2>Dispenses</h2><table><thead><tr><th class="name">Élève</th><th>Période</th><th>Type</th><th>Autorisé à ne pas assister</th><th>Certificat</th></tr></thead><tbody>`;
+    html += `<h2>Dispenses</h2><table><thead><tr><th class="name">Élève</th><th>Période</th><th>Type</th><th>Autorisé à ne pas assister</th></tr></thead><tbody>`;
     dispList.forEach(({s,d})=>{
-      html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td><td>${fmtDateFR(d.dateDebut)} → ${d.dateFin?fmtDateFR(d.dateFin):'indéterminée'}</td><td>${escapeHtml(DISP_TYPE_LABEL[d.type]||d.type)}</td><td>${d.autorise?'Oui':'Non'}</td><td>${d.photo?`<img src="${d.photo}" style="width:70px;height:70px;object-fit:cover;">`:'—'}</td></tr>`;
+      html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td><td>${fmtDateFR(d.dateDebut)} → ${d.dateFin?fmtDateFR(d.dateFin):'indéterminée'}</td><td>${escapeHtml(DISP_TYPE_LABEL[d.type]||d.type)}</td><td>${d.autorise?'Oui':'Non'}</td></tr>`;
     });
     html += `</tbody></table>`;
   }
@@ -1125,10 +1296,12 @@ function renderEleves(tab){
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     tab.fields.forEach(f=>{ html += `<td>${escapeHtml(s[f.key]||'')}</td>`; });
+    const allDisp = s.dispenses||[];
     const disp = activeDispenseOn(s, todayIso);
     const tc = disp ? (DISP_TYPE_COLOR[disp.type]||{bg:'#f1f5f9',fg:'#64748b'}) : null;
     html += `<td style="white-space:nowrap;">
       ${disp?`<span class="badge" style="background:${tc.bg};color:${tc.fg};margin-right:3px;" title="Dispensé jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'(indéterminée)'}">${DISP_TYPE_LABEL[disp.type]||disp.type}</span>`:''}
+      ${allDisp.length?`<span class="badge" style="background:#e2e8f0;color:#475569;margin-right:3px;" title="${allDisp.length} dispense(s) enregistrée(s) au total">${allDisp.length}</span>`:''}
       <button class="add-mini" title="Gérer les dispenses" onclick="openDispenseModal('${tab.id}','${s.id}')">+</button>
     </td>`;
     html += `<td><button class="btn secondary small" onclick="editStudent('${tab.id}','${s.id}')">✎</button> <button class="btn danger small" onclick="deleteStudent('${tab.id}','${s.id}')">🗑</button></td></tr>`;
@@ -1236,7 +1409,7 @@ function saveEditStudent(tabId, studentId){
 /* ============================= DISPENSES (médical) ============================= */
 let dispensePending = null;
 function openDispenseModal(tabId, studentId){
-  dispensePending = {tabId, studentId, photo:null};
+  dispensePending = {tabId, studentId};
   renderDispenseModal();
 }
 function renderDispenseModal(){
@@ -1255,7 +1428,6 @@ function renderDispenseModal(){
           const active = d.autorise && d.dateDebut<=todayIso && (!d.dateFin || todayIso<=d.dateFin);
           const tc = DISP_TYPE_COLOR[d.type] || {bg:'#f1f5f9',fg:'#64748b'};
           return `<div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;padding:8px;${active?'box-shadow:0 0 0 2px #581c87;':''}">
-            ${d.photo?`<a href="${d.photo}" target="_blank" title="Voir le certificat"><img src="${d.photo}" style="width:48px;height:48px;object-fit:cover;border-radius:7px;border:1px solid var(--border);"></a>`:`<div style="width:48px;height:48px;border-radius:7px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:.6rem;text-align:center;">Pas de photo</div>`}
             <div style="flex:1;">
               <span class="badge" style="background:${tc.bg};color:${tc.fg}">${DISP_TYPE_LABEL[d.type]||d.type}</span>
               ${active?'<span class="badge" style="background:#581c87;color:#fff;margin-left:4px;">En cours</span>':''}
@@ -1278,10 +1450,6 @@ function renderDispenseModal(){
           <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--ink);font-weight:400;"><input type="checkbox" id="dispAutorise" style="width:auto;"> Autorisé à ne pas assister au cours</label>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
-        <button class="btn secondary small" onclick="openDispenseCamera()">📷 Prendre une photo</button>
-        ${dispensePending.photo?`<img src="${dispensePending.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border);"><button class="btn danger small" style="padding:2px 6px;" onclick="clearDispensePhoto()">🗑</button>`:'<span class="muted" style="font-size:.76rem;">Aucune photo</span>'}
-      </div>
       <p class="legend" style="margin:0 0 4px;">Si « Autorisé à ne pas assister au cours » est coché, l'élève sera automatiquement marqué <b>Disp</b> à chaque nouvel appel créé pendant la période de dispense.</p>
       <div class="modal-foot">
         <button class="btn ghost" onclick="closeModal()">Fermer</button>
@@ -1289,61 +1457,6 @@ function renderDispenseModal(){
       </div>
     </div>
   </div>`;
-}
-function clearDispensePhoto(){
-  if(!dispensePending) return;
-  dispensePending.photo = null;
-  renderDispenseModal();
-}
-let dispCamStream = null;
-function openDispenseCamera(){
-  if(!dispensePending) return;
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    alert("La caméra n'est pas accessible sur ce navigateur.");
-    return;
-  }
-  document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay">
-    <div class="modal-box" style="max-width:480px;text-align:center;">
-      <h2>Photo du certificat</h2>
-      <video id="dispCamVideo" autoplay playsinline style="width:100%;border-radius:10px;background:#000;max-height:60vh;"></video>
-      <canvas id="dispCamCanvas" style="display:none;"></canvas>
-      <div class="modal-foot" style="justify-content:center;">
-        <button class="btn ghost" onclick="closeDispenseCamera()">Annuler</button>
-        <button class="btn" onclick="captureDispensePhoto()">📸 Capturer</button>
-      </div>
-    </div>
-  </div>`;
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false})
-    .then(stream=>{
-      dispCamStream = stream;
-      const v = document.getElementById('dispCamVideo');
-      if(v){ v.srcObject = stream; } else { stream.getTracks().forEach(t=>t.stop()); dispCamStream=null; }
-    })
-    .catch(()=>{
-      alert("Impossible d'accéder à la caméra. Vérifiez les autorisations de votre navigateur.");
-      renderDispenseModal();
-    });
-}
-function stopDispenseCamera(){
-  if(dispCamStream){ dispCamStream.getTracks().forEach(t=>t.stop()); dispCamStream=null; }
-}
-function closeDispenseCamera(){
-  stopDispenseCamera();
-  renderDispenseModal();
-}
-function captureDispensePhoto(){
-  const v = document.getElementById('dispCamVideo');
-  const c = document.getElementById('dispCamCanvas');
-  if(!v || !v.videoWidth){ alert("La caméra n'est pas encore prête, réessayez dans un instant."); return; }
-  const maxDim = 1400;
-  let w = v.videoWidth, h = v.videoHeight;
-  if(w>maxDim || h>maxDim){ if(w>h){ h = Math.round(h*maxDim/w); w = maxDim; } else { w = Math.round(w*maxDim/h); h = maxDim; } }
-  c.width = w; c.height = h;
-  c.getContext('2d').drawImage(v, 0, 0, w, h);
-  const dataUrl = c.toDataURL('image/jpeg', .82);
-  stopDispenseCamera();
-  if(dispensePending) dispensePending.photo = dataUrl;
-  renderDispenseModal();
 }
 function saveDispense(){
   if(!dispensePending) return;
@@ -1358,9 +1471,9 @@ function saveDispense(){
   if(!dateDebut){ alert('La date de début est obligatoire.'); return; }
   if(dateFin && dateFin<dateDebut){ alert('La date de fin doit être postérieure à la date de début.'); return; }
   if(!s.dispenses) s.dispenses = [];
-  s.dispenses.push({id:uid(), dateDebut, dateFin, type, autorise, photo:dispensePending.photo||null});
+  s.dispenses.push({id:uid(), dateDebut, dateFin, type, autorise});
   saveState();
-  dispensePending = {tabId, studentId, photo:null};
+  dispensePending = {tabId, studentId};
   renderDispenseModal();
   renderApp();
 }
@@ -1392,9 +1505,11 @@ function renderAppel(tab, act, activityLabel){
   const todayIso = todayISO();
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    const allDisp = s.dispenses||[];
     const disp = activeDispenseOn(s, todayIso);
     const dispDot = disp ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${(DISP_TYPE_COLOR[disp.type]||{}).fg||'#64748b'};margin-right:3px;" title="${DISP_TYPE_LABEL[disp.type]||disp.type} — jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'indéterminée'}"></span>` : '';
-    html += `<td style="white-space:nowrap;text-align:center;">${dispDot}<button class="add-mini" title="Gérer les dispenses" onclick="openDispenseModal('${tab.id}','${s.id}')">+</button></td>`;
+    const dispCount = allDisp.length?`<span class="muted" style="font-size:.64rem;margin-right:2px;" title="${allDisp.length} dispense(s) enregistrée(s) au total">${allDisp.length}</span>`:'';
+    html += `<td style="white-space:nowrap;text-align:center;">${dispCount}${dispDot}<button class="add-mini" title="Gérer les dispenses" onclick="openDispenseModal('${tab.id}','${s.id}')">+</button></td>`;
     act.appels.forEach(ap=>{
       const rec = ap.records[s.id] || {presence:'P', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
@@ -1983,6 +2098,11 @@ function renderRecap(tab, act, activityLabel){
 
 /* ============================= INIT ============================= */
 renderApp();
+updateSyncStatusUI();
+if(syncConfig) pullFromAppsScript();
+setInterval(()=>{ if(syncConfig && !syncState.busy) pullFromAppsScript(); }, 60000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && syncConfig && !syncState.busy) pullFromAppsScript(); });
+window.addEventListener('focus', ()=>{ if(syncConfig && !syncState.busy) pullFromAppsScript(); });
 </script>
 </body>
 </html>
