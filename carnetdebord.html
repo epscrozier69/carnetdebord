@@ -1516,21 +1516,14 @@ function renderAppel(tab, act, activityLabel){
       <h2 style="margin:0;flex:1;">Appel — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}</h2>
       <button class="btn small" onclick="addAppel('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvel appel</button>
     </div>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th><th style="background:${FIXED_HEADER_BG};">Disp.</th>`;
+    <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>`;
   act.appels.forEach((ap,i)=>{
     const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='P'?1:0), 0);
     html += `<th style="background:${colorForCol(i)};position:relative;"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.</div><br><input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕</button></th>`;
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Récap</th></tr></thead><tbody>`;
-  const todayIso = todayISO();
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
-    const allDisp = s.dispenses||[];
-    const match = activeDispenseAnywhere(s, tab.id, todayIso);
-    const disp = match && match.disp;
-    const dispDot = disp ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${(DISP_TYPE_COLOR[disp.type]||{}).fg||'#64748b'};margin-right:3px;" title="${DISP_TYPE_LABEL[disp.type]||disp.type} — jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'indéterminée'}${match.isLocal?'':' — saisie dans '+escapeHtml(match.tabName)}"></span>` : '';
-    const dispCount = allDisp.length?`<span class="muted" style="font-size:.64rem;margin-right:2px;" title="${allDisp.length} dispense(s) enregistrée(s) au total">${allDisp.length}</span>`:'';
-    html += `<td style="white-space:nowrap;text-align:center;">${dispCount}${dispDot}<button class="add-mini" title="Gérer les dispenses" onclick="openDispenseModal('${tab.id}','${s.id}')">+</button></td>`;
     act.appels.forEach(ap=>{
       const rec = ap.records[s.id] || {presence:'P', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
@@ -1818,13 +1811,19 @@ function renderTheorie6(tab, act, activityLabel){
   const data = act.evaluations.echauffementTheorie;
   const students = sortedStudents(tab.students);
   const catColor = EVAL_CAT_COLOR.echauffement;
+  const lastSeance = data.seances.length ? data.seances[data.seances.length-1] : null;
+  let starter = null;
+  if(revealedStarter && revealedStarter.tabId===tab.id && revealedStarter.activityLabel===activityLabel && (Date.now()-revealedStarter.ts)<REVEAL_DURATION_MS){
+    starter = tab.students.find(x=>x.id===revealedStarter.studentId);
+  }
   let html = `<div style="background:${lightTint(catColor)};border-radius:16px;padding:4px;">
   <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${catColor},${shadeColor(catColor,-24)});">
     <div class="toolbar">
       <h2 style="margin:0;flex:1;">Échauffement théorie — 6ème — ${escapeHtml(tab.name)}</h2>
-      ${data.seances.length?`<button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="redrawTheorie6('${tab.id}','${escapeAct(activityLabel)}','${data.seances[data.seances.length-1].id}')">🎲 Tirer au sort</button>`:''}
+      ${data.seances.length?`<button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="redrawTheorie6('${tab.id}','${escapeAct(activityLabel)}','${lastSeance.id}')">🎲 Tirer au sort</button>`:''}
       <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
     </div>
+    ${starter?`<div style="text-align:center;font-size:1.3rem;font-weight:800;color:#fff;background:linear-gradient(135deg,${catColor},${shadeColor(catColor,-24)});border-radius:12px;padding:12px;margin-bottom:10px;">➡️ ${escapeHtml(starter.nomPrenom)}</div>`:''}
     <p class="legend" style="border-left-color:${catColor};">➡️ = élève tiré au sort pour commencer. Le bouton "🎲 Tirer au sort" ci-dessus retire au sort pour la séance la plus récente. + = juste · − = ne sait pas · ~ = pas tout juste, pour chaque élève. Note finale = cumul des erreurs (−) sur toutes les séances : 0-1 → TB, 2-3 → S, 4-5 → F, 6+ → I.</p>
     <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
   data.seances.forEach((se,i)=>{
@@ -1859,13 +1858,19 @@ function renderTheorie4(tab, act, activityLabel){
   const data = act.evaluations.echauffementTheorie;
   const students = sortedStudents(tab.students);
   const catColor = EVAL_CAT_COLOR.echauffement;
+  const lastSeance = data.seances.length ? data.seances[data.seances.length-1] : null;
+  let starter = null;
+  if(revealedStarter && revealedStarter.tabId===tab.id && revealedStarter.activityLabel===activityLabel && (Date.now()-revealedStarter.ts)<REVEAL_DURATION_MS){
+    starter = tab.students.find(x=>x.id===revealedStarter.studentId);
+  }
   let html = `<div style="background:${lightTint(catColor)};border-radius:16px;padding:4px;">
   <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${catColor},${shadeColor(catColor,-24)});">
     <div class="toolbar">
       <h2 style="margin:0;flex:1;">Échauffement théorie — 4ème — ${escapeHtml(tab.name)}</h2>
-      ${data.seances.length?`<button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="redrawTheorie4('${tab.id}','${escapeAct(activityLabel)}','${data.seances[data.seances.length-1].id}')">🎲 Tirer au sort</button>`:''}
+      ${data.seances.length?`<button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="redrawTheorie4('${tab.id}','${escapeAct(activityLabel)}','${lastSeance.id}')">🎲 Tirer au sort</button>`:''}
       <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
     </div>
+    ${starter?`<div style="text-align:center;font-size:1.3rem;font-weight:800;color:#fff;background:linear-gradient(135deg,${catColor},${shadeColor(catColor,-24)});border-radius:12px;padding:12px;margin-bottom:10px;">➡️ ${escapeHtml(starter.nomPrenom)}</div>`:''}
     <p class="legend" style="border-left-color:${catColor};">La case en surbrillance indique l'élève tiré·e au sort pour mener l'échauffement (seul·e noté·e). Le bouton "🎲 Tirer au sort" ci-dessus retire au sort pour la séance la plus récente. Cliquez dessus pour choisir TB, S, F ou I — seule la lettre compte : TB (0-1 erreur), S (2-3), F (4-5), I (6 ou +) sont des repères indicatifs.</p>
     <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
   data.seances.forEach((se,i)=>{
@@ -1886,7 +1891,7 @@ function renderTheorie4(tab, act, activityLabel){
       const grade = se.grade || '';
       const col = grade ? LEVEL_COLOR[grade] : {bg:'#f1f5f9',fg:'#64748b'};
       html += `<td style="background:${shadeColor(catColor,88)};">
-        <span class="cell-click" style="background:${col.bg};color:${col.fg};box-shadow:0 0 0 2px ${catColor};" title="Élève tiré·e au sort — cliquer pour noter" onclick="cycleTheorie4Grade('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${grade||'?'}</span>
+        <span class="cell-click" style="background:${col.bg};color:${col.fg};box-shadow:0 0 0 2px ${catColor};" title="Élève tiré·e au sort — cliquer pour noter" onclick="cycleTheorie4Grade('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${grade||'·'}</span>
       </td>`;
     });
     html += `</tr>`;
@@ -1909,6 +1914,15 @@ function addTheorieSeance(tabId, activityLabel){
   act.evaluations.echauffementTheorie.seances.push({id:uid(), date:todayISO(), starterId:starter, marks:{}, grade:'', title:''});
   saveState(); renderApp();
 }
+let revealedStarter = null;
+const REVEAL_DURATION_MS = 5000;
+function revealStarter(tabId, activityLabel, studentId){
+  const ts = Date.now();
+  revealedStarter = {tabId, activityLabel, studentId, ts};
+  setTimeout(()=>{
+    if(revealedStarter && revealedStarter.ts===ts){ revealedStarter = null; renderApp(); }
+  }, REVEAL_DURATION_MS);
+}
 function redrawTheorie4(tabId, activityLabel, seanceId){
   const act = findActivity(tabId, activityLabel);
   const tab = state.tabs[tabId];
@@ -1917,6 +1931,7 @@ function redrawTheorie4(tabId, activityLabel, seanceId){
   if(!se || !students.length) return;
   se.starterId = students[Math.floor(Math.random()*students.length)].id;
   se.grade = '';
+  revealStarter(tabId, activityLabel, se.starterId);
   saveState(); renderApp();
 }
 function redrawTheorie6(tabId, activityLabel, seanceId){
@@ -1926,6 +1941,7 @@ function redrawTheorie6(tabId, activityLabel, seanceId){
   const se = act.evaluations.echauffementTheorie.seances.find(s=>s.id===seanceId);
   if(!se || !students.length) return;
   se.starterId = students[Math.floor(Math.random()*students.length)].id;
+  revealStarter(tabId, activityLabel, se.starterId);
   saveState(); renderApp();
 }
 function cycleTheorie4Grade(tabId, activityLabel, seanceId, studentId){
