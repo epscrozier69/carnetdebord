@@ -126,7 +126,8 @@ header.app-header h1{
 .tabbar button.active{background:linear-gradient(135deg,var(--primary),#6d28d9);border-color:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(67,56,202,.4);}
 .tabbar button.add{background:var(--primary-light);color:var(--primary);border-style:dashed;}
 .tabbar.sub2 button.active{background:linear-gradient(135deg,var(--accent),#0891b2);border-color:var(--accent);color:#04303a;box-shadow:0 3px 10px rgba(6,182,212,.4);}
-.tabbar.sub3 button{--cat:#7c3aed;}
+.tabbar.sub3{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
+.tabbar.sub3 button{--cat:#7c3aed;flex-shrink:0;padding:6px 10px;font-size:.78rem;}
 .tabbar.sub3 button:hover{border-color:var(--cat);color:var(--cat);}
 .tabbar.sub3 button.active{background:var(--cat);border-color:var(--cat);color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.25);}
 .niv-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px;box-shadow:0 0 0 2px rgba(255,255,255,.6);flex-shrink:0;}
@@ -429,7 +430,7 @@ const EVAL_CATS = [
   {key:'attitude', label:'Attitude'},
   {key:'implication', label:'Implication'},
   {key:'capacites', label:'Capacités'},
-  {key:'performance', label:'Performance'},
+  {key:'performance', label:'Perf'},
   {key:'rolesSociaux', label:'Rôles sociaux'}
 ];
 const EVAL_CAT_COLOR = {
@@ -1634,7 +1635,7 @@ function renderEvaluations(tab, act, activityLabel){
     const color = CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length];
     tabsHtml += `<button class="${nav.evalCat===c.id?'active':''}" style="--cat:${color}" onclick="setNav({evalCat:'${c.id}'})">${escapeHtml(c.title)}</button>`;
   });
-  tabsHtml += `<button class="add" onclick="addCustomEval('${tab.id}','${escapeAct(activityLabel)}')">+ Ajouter un onglet</button>`;
+  tabsHtml += `<button class="add" onclick="addCustomEval('${tab.id}','${escapeAct(activityLabel)}')">+ Onglet</button>`;
   tabsHtml += `<button class="${nav.evalCat==='recap'?'active':''}" style="--cat:${EVAL_CAT_COLOR.recap}" onclick="setNav({evalCat:'recap'})">🏁 Récap</button>`;
   tabsHtml += `</div>`;
 
