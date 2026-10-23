@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>EPS Joliot Curie - Carnet de bord</title>
+<style>
+:root{
+  --bg:#eef0f9;
+  --card:#ffffff;
+  --ink:#1a2140;
+  --ink-soft:#5f6888;
+  --border:#e3e6f3;
+  --primary:#4338ca;
+  --primary-dark:#312993;
+  --primary-light:#ece9fc;
+  --accent:#06b6d4;
+  --accent2:#ec4899;
+  --radius:14px;
+  --shadow:0 3px 14px rgba(49,41,147,.09);
+  --shadow-lg:0 10px 32px rgba(49,41,147,.18);
+  --tb:#39ff14;
+  --tb-fg:#063d00;
+  --s:#22c55e;
+  --s-fg:#06220f;
+  --f:#f97316;
+  --f-fg:#3a1900;
+  --i:#ef4444;
+  --i-fg:#ffffff;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(1100px 480px at 8% -8%, rgba(67,56,202,.13), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgba(6,182,212,.12), transparent 55%),
+    radial-gradient(800px 600px at 45% 115%, rgba(236,72,153,.08), transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+header.app-header{
+  background:linear-gradient(115deg,#4338ca 0%,#6d28d9 55%,#0891b2 100%);
+  color:#fff;
+  padding:13px 16px;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px;
+  position:sticky;top:0;z-index:50;
+  box-shadow:0 4px 20px rgba(49,41,147,.3);
+}
+header.app-header h1{
+  font-size:1.12rem;
+  font-weight:800;
+  margin:0;
+  flex:1 1 auto;
+  letter-spacing:.3px;
+  text-shadow:0 1px 2px rgba(0,0,0,.15);
+}
+.hbtn{
+  background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.32);
+  color:#fff;
+  border-radius:9px;
+  padding:7px 12px;
+  font-size:.78rem;
+  font-weight:700;
+  white-space:nowrap;
+  transition:.15s;
+}
+.hbtn:hover{background:rgba(255,255,255,.26);transform:translateY(-1px);}
+.hbtn.danger{background:rgba(239,68,68,.3);border-color:rgba(239,68,68,.65);}
+.hbtn.primary2{background:linear-gradient(135deg,#06b6d4,#0891b2);border-color:#0891b2;color:#043138;font-weight:800;box-shadow:0 2px 10px rgba(6,182,212,.45);}
+.hbtn.primary2:hover{box-shadow:0 4px 14px rgba(6,182,212,.55);}
+
+#app{padding:10px 10px 40px;max-width:1500px;margin:0 auto;}
+
+.tabbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin:12px 0;
+}
+.tabbar button{
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--ink-soft);
+  padding:8px 14px;
+  border-radius:999px;
+  font-size:.83rem;
+  font-weight:700;
+  transition:.16s;
+  box-shadow:0 1px 3px rgba(30,40,80,.05);
+  display:inline-flex;
+  align-items:center;
+}
+.tabbar button:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);box-shadow:0 3px 9px rgba(67,56,202,.18);}
+.tabbar button.active{background:linear-gradient(135deg,var(--primary),#6d28d9);border-color:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(67,56,202,.4);}
+.tabbar button.add{background:var(--primary-light);color:var(--primary);border-style:dashed;}
+.tabbar.sub2 button.active{background:linear-gradient(135deg,var(--accent),#0891b2);border-color:var(--accent);color:#04303a;box-shadow:0 3px 10px rgba(6,182,212,.4);}
+.tabbar.sub3 button{--cat:#7c3aed;}
+.tabbar.sub3 button:hover{border-color:var(--cat);color:var(--cat);}
+.tabbar.sub3 button.active{background:var(--cat);border-color:var(--cat);color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.25);}
+.niv-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px;box-shadow:0 0 0 2px rgba(255,255,255,.6);flex-shrink:0;}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:17px 16px 16px;
+  margin-bottom:16px;
+  position:relative;
+  overflow:hidden;
+}
+.card::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:5px;
+  background:var(--accentbar, linear-gradient(90deg,var(--primary),var(--accent),var(--accent2)));
+}
+.card h2{margin:2px 0 10px;font-size:1.1rem;font-weight:800;letter-spacing:.2px;}
+.card h3{margin:0 0 8px;font-size:.92rem;color:var(--ink-soft);font-weight:700;}
+.muted{color:var(--ink-soft);font-size:.82rem;}
+.legend{font-size:.78rem;color:var(--ink-soft);background:var(--primary-light);border-left:4px solid var(--primary);border-radius:7px;padding:7px 11px;margin-bottom:10px;display:inline-block;}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;}
+.btn{
+  border:1px solid var(--primary);
+  background:linear-gradient(135deg,var(--primary),#6d28d9);
+  color:#fff;
+  padding:7px 13px;
+  border-radius:9px;
+  font-size:.8rem;
+  font-weight:700;
+  transition:.15s;
+  box-shadow:0 2px 7px rgba(67,56,202,.28);
+}
+.btn:hover{transform:translateY(-1px);box-shadow:0 4px 11px rgba(67,56,202,.38);}
+.btn.secondary{background:#fff;color:var(--primary);box-shadow:none;}
+.btn.ghost{background:transparent;color:var(--ink-soft);border-color:var(--border);box-shadow:none;}
+.btn.small{padding:4px 9px;font-size:.72rem;}
+.btn.danger{background:#fff;color:var(--i);border-color:var(--i);box-shadow:none;}
+.btn.danger:hover{background:var(--i);color:#fff;}
+
+.table-scroll{
+  max-height:68vh;
+  overflow:auto;
+  border:1px solid var(--border);
+  border-radius:10px;
+}
+.table-scroll::-webkit-scrollbar{width:10px;height:10px;}
+.table-scroll::-webkit-scrollbar-track{background:var(--primary-light);}
+.table-scroll::-webkit-scrollbar-thumb{background:linear-gradient(var(--primary),var(--accent));border-radius:6px;}
+table.data{
+  border-collapse:separate;
+  border-spacing:0;
+  width:auto;
+  table-layout:auto;
+  font-size:.82rem;
+}
+table.data th,table.data td{
+  padding:3px 7px;
+  border-bottom:1px solid var(--border);
+  border-right:1px solid var(--border);
+  white-space:nowrap;
+  text-align:center;
+  vertical-align:middle;
+  width:1px;
+}
+table.data th{
+  position:sticky;top:0;
+  color:#fff;
+  font-size:.74rem;
+  text-transform:uppercase;
+  letter-spacing:.3px;
+  z-index:3;
+}
+table.data td.name,table.data th.name{
+  position:sticky;left:0;
+  z-index:4;
+  background:var(--card);
+  text-align:left;
+  font-weight:600;
+  color:var(--ink);
+  width:auto;
+  max-width:130px;
+  white-space:normal;
+  word-break:break-word;
+  line-height:1.15;
+  font-size:.76rem;
+  overflow:hidden;
+  box-shadow:2px 0 4px rgba(0,0,0,.04);
+}
+table.data th.name{background:var(--primary-dark);color:#fff;z-index:5;}
+table.data tr:nth-child(even) td{background:#e8ebf5;}
+table.data tr:nth-child(even) td.name{background:#dde1f2;}
+
+.cell-click{cursor:pointer;border-radius:7px;padding:2px 7px;display:inline-block;min-width:26px;font-weight:800;box-shadow:0 1px 2px rgba(0,0,0,.1);transition:.12s;}
+.cell-click:hover{outline:2px solid rgba(67,56,202,.3);transform:scale(1.06);}
+.appel-cell{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:nowrap;}
+.incbar{display:flex;gap:2px;justify-content:center;margin-top:2px;flex-wrap:wrap;}
+.incbtn{
+  border:1px solid var(--border);
+  background:#fff;
+  color:var(--ink-soft);
+  font-size:.62rem;
+  padding:1px 4px;
+  border-radius:4px;
+  line-height:1.3;
+}
+.incbtn.on{background:#334155;color:#fff;border-color:#334155;}
+.inc-add{
+  width:24px;
+  height:24px;
+  flex-shrink:0;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  appearance:none;
+  border:1px solid var(--border);
+  background:#f8fafc;
+  color:var(--primary);
+  font-size:.9rem;
+  font-weight:800;
+  padding:0;
+  border-radius:50%;
+  line-height:1;
+  text-align:center;
+  text-align-last:center;
+  cursor:pointer;
+}
+
+.pillrow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.pill{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:5px 11px;
+  border-radius:20px;
+  font-size:.78rem;
+  font-weight:700;
+  color:var(--ink-soft);
+  transition:.15s;
+}
+.pill.active{background:linear-gradient(135deg,var(--primary),#6d28d9);color:#fff;border-color:var(--primary);box-shadow:0 2px 8px rgba(67,56,202,.35);}
+.pill input{border:none;background:transparent;font-weight:600;width:100px;}
+
+.badge{display:inline-block;padding:2px 9px;border-radius:7px;font-size:.72rem;font-weight:800;box-shadow:0 1px 2px rgba(0,0,0,.08);}
+.th-del{display:block;margin:4px auto 0;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:5px;font-size:.62rem;padding:1px 6px;cursor:pointer;transition:.15s;}
+.th-del:hover{background:rgba(239,68,68,.9);border-color:#ef4444;}
+
+
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(26,22,69,.6);
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:3vh 10px;z-index:200;overflow:auto;
+  backdrop-filter:blur(2px);
+}
+.modal-box{
+  background:#fff;border-radius:16px;max-width:720px;width:100%;
+  padding:20px;box-shadow:0 20px 60px rgba(26,22,69,.4);
+  border-top:5px solid var(--primary);
+}
+.modal-box h2{margin-top:0;font-weight:800;}
+.modal-box h3{color:var(--primary);font-weight:800;margin:14px 0 8px;}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap;}
+textarea.rawpaste{width:100%;min-height:140px;font-family:ui-monospace,Consolas,monospace;font-size:.78rem;border:1px solid var(--border);border-radius:8px;padding:8px;}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;}
+.formgrid label{font-size:.75rem;color:var(--ink-soft);display:block;margin-bottom:3px;}
+.formgrid select,.formgrid input{width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;}
+.checklist{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px;}
+.checklist label{display:flex;gap:8px;align-items:center;padding:4px 0;font-size:.85rem;}
+.steps{display:flex;gap:6px;margin-bottom:12px;}
+.step{flex:1;text-align:center;font-size:.7rem;padding:6px;border-radius:7px;background:var(--primary-light);color:var(--primary);font-weight:800;}
+.step.active{background:linear-gradient(135deg,var(--primary),#6d28d9);color:#fff;}
+.empty{padding:20px;text-align:center;color:var(--ink-soft);}
+.recap-level{font-weight:800;padding:3px 10px;border-radius:7px;display:inline-block;box-shadow:0 1px 2px rgba(0,0,0,.08);}
+
+@media (max-width:800px){
+  header.app-header h1{font-size:.92rem;}
+  .table-scroll{max-height:60vh;}
+  table.data{font-size:.74rem;}
+  .formgrid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <h1>🏐 EPS Joliot Curie — Carnet de bord</h1>
+  <button class="hbtn primary2" onclick="openImportModal()">+ Importer une classe / un groupe</button>
+  <button class="hbtn" onclick="exportBackup()">💾 Exporter sauvegarde</button>
+  <button class="hbtn" onclick="document.getElementById('restoreFile').click()">📂 Restaurer</button>
+  <button class="hbtn danger" onclick="resetAll()">🗑 Réinitialiser</button>
+  <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreBackup(event)">
+  <input type="file" id="baremeFile" accept="image/*" multiple style="display:none" onchange="handleBaremeFiles(event)">
+</header>
+<div id="app"></div>
+<div id="modalRoot"></div>
+
+<script>
+/* ============================= CONFIG ============================= */
+const NIVEAU_ACTIVITIES = {
+  '6': ['Natation','Rugby','Biathlon','Danse','Lutte'],
+  '4': ['Tennis de table','Acrosport','Ultimate','Volley','Course de haies'],
+  '3': ['Ultimate','Volley','Acrosport','Badminton','Épreuves combinées']
+};
+
+const PRESENCE_CYCLE = ['P','ABS','DP','DISP'];
+const PRESENCE_LABEL = {P:'P',ABS:'Abs',DP:'DP',DISP:'Disp'};
+const PRESENCE_TITLE = {P:'Présent',ABS:'Absent',DP:'Dispensé ponctuellement',DISP:'Dispensé'};
+const PRESENCE_COLOR = {P:{bg:'#dbeafe',fg:'#1e3a8a'},ABS:{bg:'#fecaca',fg:'#7f1d1d'},DP:{bg:'#fed7aa',fg:'#7c2d12'},DISP:{bg:'#e9d5ff',fg:'#581c87'}};
+
+const INCIDENTS = [
+  {code:'T',label:'Oubli de tenue'},
+  {code:'M',label:'Oubli de matériel'},
+  {code:'⚠',label:'Attention'},
+  {code:'Obs',label:'Observation'},
+  {code:'Exc',label:'Exclusion'},
+  {code:'RA',label:"Rapport d'incident"},
+  {code:'R',label:'Retenue'}
+];
+const INCIDENT_COLOR = {
+  'T':'#f87171', 'M':'#ef4444', '⚠':'#f97316', 'Obs':'#dc2626',
+  'Exc':'#991b1b', 'RA':'#ff1a1a', 'R':'#64748b'
+};
+
+const LEVEL_CYCLE = ['','TB','S','F','I'];
+const LEVEL_COLOR = {
+  TB:{bg:'var(--tb)',fg:'var(--tb-fg)'},
+  S:{bg:'var(--s)',fg:'var(--s-fg)'},
+  F:{bg:'var(--f)',fg:'var(--f-fg)'},
+  I:{bg:'var(--i)',fg:'var(--i-fg)'}
+};
+const LEVEL_SCORE = {TB:4,S:3,F:2,I:1};
+
+const MARK_CYCLE = ['','+','-','~'];
+const MARK_COLOR = {'+':{bg:'#bbf7d0',fg:'#065f46'},'-':{bg:'#fecaca',fg:'#7f1d1d'},'~':{bg:'#fde68a',fg:'#78350f'}};
+
+const COLUMN_PALETTE = ['#4338ca','#7c3aed','#db2777','#ea580c','#0891b2','#4f46e5','#c026d3','#0369a1','#e11d48','#475569'];
+const FIXED_HEADER_BG = 'linear-gradient(135deg,#475569,#334155)';
+const NIVEAU_COLOR = {'6':'#0891b2','5':'#7c3aed','4':'#d97706','3':'#db2777'};
+const GROUP_COLOR = '#475569';
+function shadeColor(hex, percent){
+  const num = parseInt(hex.slice(1),16);
+  const amt = Math.round(2.55*percent);
+  let r=(num>>16)+amt, g=((num>>8)&0x00FF)+amt, b=(num&0x0000FF)+amt;
+  r=Math.max(Math.min(255,r),0); g=Math.max(Math.min(255,g),0); b=Math.max(Math.min(255,b),0);
+  return '#'+(0x1000000+r*0x10000+g*0x100+b).toString(16).slice(1);
+}
+
+const CLASS_FIELDS = [
+  {key:'classe',label:'Classe'},
+  {key:'sexe',label:'Sexe'},
+  {key:'dateNaissance',label:'Date de naissance'},
+  {key:'projetAccompagnement',label:"Projet d'accompagnement"}
+];
+const AS_FIELDS = [
+  {key:'classe',label:'Classe'},
+  {key:'sexe',label:'Sexe'},
+  {key:'dateNaissance',label:'Date de naissance'},
+  {key:'categorie',label:'Catégorie'},
+  {key:'cotisation',label:'Cotisation'},
+  {key:'reglement',label:'Règlement'},
+  {key:'numeroLicence',label:'N° licence'},
+  {key:'teeShirt',label:'Tee-shirt'},
+  {key:'section',label:'Section'}
+];
+const TKW_FIELDS = [
+  {key:'classe',label:'Classe'},
+  {key:'sexe',label:'Sexe'},
+  {key:'ap',label:'AP'},
+  {key:'cotisation',label:'Cotisation'},
+  {key:'dobok',label:'Dobok'},
+  {key:'certificatMedical',label:'Certificat médical'}
+];
+
+const IMPORT_TYPES = {
+  CLASSES:{label:'Classes (liste des élèves du collège)', fields:CLASS_FIELDS, perClasse:true, sheetTab:'Liste des élèves du collège'},
+  AS_SP:{label:'AS Sport Partagé', fields:AS_FIELDS, perClasse:false, groupName:'AS Sport Partagé', sheetTab:'AS SP'},
+  AS_FUTSAL:{label:'AS Futsal', fields:AS_FIELDS, perClasse:false, groupName:'AS Futsal', sheetTab:'AS Futsal'},
+  TKW:{label:'Taekwondo', fields:TKW_FIELDS, perClasse:false, groupName:'Taekwondo', sheetTab:'TKW'}
+};
+const DEFAULT_SHEET_ID = '1-MtVqASlFvhcm9xaAksEO9vrEgc8wlrnXV8CcaQmlqg';
+
+const EVAL_CATS = [
+  {key:'echauffement', label:'Échauffement'},
+  {key:'attitude', label:'Attitude'},
+  {key:'implication', label:'Implication'},
+  {key:'capacites', label:'Capacités'},
+  {key:'performance', label:'Performance'},
+  {key:'rolesSociaux', label:'Rôles sociaux'}
+];
+const EVAL_CAT_COLOR = {
+  echauffement:'#0ea5e9', attitude:'#6b9e7f', implication:'#f97316',
+  capacites:'#38bdf8', performance:'#1d4ed8', rolesSociaux:'#8fb89e', recap:'#ca8a04'
+};
+const CUSTOM_EVAL_COLORS = ['#7c3aed','#db2777','#0891b2','#d97706','#c026d3','#4f46e5'];
+
+/* ============================= STATE ============================= */
+let state = loadState();
+migrateState();
+function migrateState(){
+  Object.values(state.tabs).forEach(tab=>{
+    Object.values(tab.activities||{}).forEach(act=>{
+      if(act.evaluations && !act.evaluations.rolesSociaux){
+        act.evaluations.rolesSociaux = {criteria:[], seances:[]};
+      }
+      if(!act.baremes) act.baremes = [];
+    });
+  });
+}
+let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}};
+let importState = null;
+
+function defaultState(){ return {tabs:{}, order:[]}; }
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem('cdb_state_v2');
+    if(raw) return JSON.parse(raw);
+  }catch(e){ console.warn('state load failed', e); }
+  return defaultState();
+}
+function saveState(){
+  try{ localStorage.setItem('cdb_state_v2', JSON.stringify(state)); }catch(e){ console.warn('save failed', e); }
+}
+
+/* ============================= UTILS ============================= */
+function uid(){ return 'id'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function stripAccents(s){ return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function normalize(s){ return stripAccents(String(s||'')).toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim(); }
+function toTitleCase(s){ return String(s||'').toLowerCase().split(/\s+/).map(w=>w?w[0].toUpperCase()+w.slice(1):w).join(' '); }
+function todayISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function fmtDateFR(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return (d&&m&&y)?`${d}/${m}/${y}`:iso; }
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function colorForCol(i){
+  const c = COLUMN_PALETTE[i % COLUMN_PALETTE.length];
+  return `linear-gradient(135deg, ${c}, ${shadeColor(c,-16)})`;
+}
+function colorForColCat(baseColor, i){
+  const steps = [0,-18,-34,12,-45,-10];
+  const amt = steps[i % steps.length];
+  const c = amt===0 ? baseColor : shadeColor(baseColor, amt);
+  return `linear-gradient(135deg, ${c}, ${shadeColor(c,-14)})`;
+}
+function lightTint(hex){
+  return `linear-gradient(170deg, ${shadeColor(hex,90)}, ${shadeColor(hex,96)})`;
+}
+function sortedStudents(students){
+  return [...students].filter(s=>!s.archived).sort((a,b)=> (a.nom+a.prenom).localeCompare(b.nom+b.prenom,'fr',{sensitivity:'base'}));
+}
+
+/* ============================= CSV PARSING ============================= */
+function detectDelim(line){
+  const counts = {',':0,'\t':0,';':0};
+  for(const c of line){ if(c in counts) counts[c]++; }
+  let best=',', bestN=-1;
+  for(const k in counts){ if(counts[k]>bestN){ bestN=counts[k]; best=k; } }
+  return best;
+}
+function splitLine(line, delim){
+  if(delim===','||delim===';'){
+    const result=[]; let cur=''; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){ inQ=!inQ; continue; }
+      if(ch===delim && !inQ){ result.push(cur); cur=''; continue; }
+      cur+=ch;
+    }
+    result.push(cur);
+    return result.map(s=>s.trim());
+  }
+  return line.split(delim).map(s=>s.trim());
+}
+function parseDelimited(text){
+  const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim().length>0);
+  if(!lines.length) return {headers:[], rows:[]};
+  const delim = detectDelim(lines[0]);
+  const all = lines.map(l=>splitLine(l,delim));
+  const headers = all[0];
+  const rows = all.slice(1);
+  return {headers, rows};
+}
+function guessColumn(headers, candidates){
+  const norm = headers.map(normalize);
+  for(const cand of candidates){
+    const idx = norm.indexOf(normalize(cand));
+    if(idx>=0) return idx;
+  }
+  for(let i=0;i<norm.length;i++){
+    for(const cand of candidates){
+      if(norm[i].includes(normalize(cand))) return i;
+    }
+  }
+  return -1;
+}
+const FIELD_GUESSES = {
+  nom:['Nom'], prenom:['Prénom','Prenom'],
+  classe:['Classe'], sexe:['Sexe'],
+  dateNaissance:['Date de naissance','Né le','Date naissance'],
+  projetAccompagnement:["Projet d'accompagnement",'PAP','Projet accompagnement'],
+  categorie:['Catégorie','Categorie'], cotisation:['Cotisation'],
+  reglement:['Règlement','Reglement'], numeroLicence:['Numéro de licence','N° licence','Licence'],
+  teeShirt:['Tee shirt','Tee-shirt','T-shirt'], section:['Section'],
+  ap:['AP'], dobok:['Dobok'], certificatMedical:['Certificat médical','CM','Certificat medical']
+};
+
+/* ============================= IMPORT FLOW ============================= */
+function openImportModal(){
+  importState = {step:1, type:'CLASSES', raw:'', headers:[], rows:[], mapping:{}, classeValues:[], selectedClasses:new Set(),
+    sheetId: DEFAULT_SHEET_ID, sheetTab: IMPORT_TYPES.CLASSES.sheetTab, sheetStatus:''};
+  renderImportModal();
+}
+function closeModal(){
+  document.getElementById('modalRoot').innerHTML='';
+  importState=null;
+}
+function renderImportModal(){
+  const root = document.getElementById('modalRoot');
+  const st = importState;
+  let body='';
+  if(st.step===1){
+    body = `
+      <div class="steps">
+        <div class="step active">1. Source</div><div class="step">2. Colonnes</div><div class="step">3. Sélection</div><div class="step">4. Import</div>
+      </div>
+      <div class="formgrid">
+        <div>
+          <label>Type de données à importer</label>
+          <select id="impType">
+            ${Object.entries(IMPORT_TYPES).map(([k,v])=>`<option value="${k}" ${k===st.type?'selected':''}>${escapeHtml(v.label)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <h3>Option A — Charger directement depuis Google Sheets (fichier accessible à tous)</h3>
+      <div class="formgrid">
+        <div><label>Identifiant du classeur (dans l'URL, après /d/)</label><input id="impSheetId" value="${escapeHtml(st.sheetId)}"></div>
+        <div><label>Nom de l'onglet du classeur</label><input id="impSheetTab" value="${escapeHtml(st.sheetTab)}"></div>
+      </div>
+      <div class="toolbar">
+        <button class="btn secondary small" onclick="fetchFromSheet()">⇩ Charger depuis Google Sheets</button>
+        <span class="muted" id="impSheetStatus">${escapeHtml(st.sheetStatus||'')}</span>
+      </div>
+      <h3 style="margin-top:14px;">Option B — Copier-coller ou fichier CSV</h3>
+      <p class="muted">Ouvrez l'onglet correspondant dans votre Google Sheet, sélectionnez toutes les cellules (Ctrl+A) puis copiez (Ctrl+C), et collez ci-dessous. Vous pouvez aussi déposer un fichier CSV exporté depuis Google Sheets (Fichier → Télécharger → .csv).</p>
+      <input type="file" id="impFile" accept=".csv,.tsv,.txt" onchange="handleImportFile(event)">
+      <textarea class="rawpaste" id="impRaw" placeholder="Collez ici les données copiées depuis Google Sheets...">${escapeHtml(st.raw)}</textarea>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="closeModal()">Annuler</button>
+        <button class="btn" onclick="importStep1Next()">Analyser →</button>
+      </div>`;
+  } else if(st.step===2){
+    const def = IMPORT_TYPES[st.type];
+    body = `
+      <div class="steps">
+        <div class="step">1. Source</div><div class="step active">2. Colonnes</div><div class="step">3. Sélection</div><div class="step">4. Import</div>
+      </div>
+      <p class="muted">Vérifiez la correspondance des colonnes détectées (${st.rows.length} ligne(s) de données trouvées).</p>
+      <div class="formgrid" style="grid-template-columns:1fr 1fr;">
+        ${renderMappingRow('nom','Nom')}
+        ${renderMappingRow('prenom','Prénom')}
+        ${def.fields.map(f=>renderMappingRow(f.key,f.label)).join('')}
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="importState.step=1;renderImportModal();">← Retour</button>
+        <button class="btn" onclick="importStep2Next()">Continuer →</button>
+      </div>`;
+  } else if(st.step===3){
+    body = `
+      <div class="steps">
+        <div class="step">1. Source</div><div class="step">2. Colonnes</div><div class="step active">3. Sélection</div><div class="step">4. Import</div>
+      </div>
+      <p class="muted">Choisissez les classes à importer. Chaque classe sélectionnée créera (ou mettra à jour) son propre onglet : les élèves déjà présents sont conservés, les nouveaux sont ajoutés, ceux qui n'apparaissent plus sont archivés (pas supprimés : leurs appels et évaluations restent intacts).</p>
+      <div class="checklist">
+        ${st.classeValues.map(c=>{
+          const incoming = st.rows.filter(r=>r[st.mapping.classe]===c).map(r=>rowToStudentBase(r, st.mapping));
+          const existingTab = state.tabs['classe_'+normalize(c).replace(/\s+/g,'_')];
+          const diffLabel = existingTab
+            ? `${diffStudents(existingTab.students, incoming).kept} inchangé(s), +${diffStudents(existingTab.students, incoming).added} nouveau(x), −${diffStudents(existingTab.students, incoming).removed} archivé(s)`
+            : `nouvelle classe, ${incoming.length} élève(s)`;
+          return `<label><input type="checkbox" ${st.selectedClasses.has(c)?'checked':''} onchange="toggleClasse('${escapeAct(c)}')"> ${escapeHtml(c)} <span class="muted">(${diffLabel})</span></label>`;
+        }).join('') || '<div class="empty">Aucune classe détectée dans la colonne Classe.</div>'}
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="importState.step=2;renderImportModal();">← Retour</button>
+        <button class="btn" onclick="importStep3Next()">Importer →</button>
+      </div>`;
+  } else if(st.step===4){
+    body = `
+      <div class="steps">
+        <div class="step">1. Source</div><div class="step">2. Colonnes</div><div class="step">3. Sélection</div><div class="step active">4. Terminé</div>
+      </div>
+      <p>✅ Import terminé.</p>
+      <ul>${st.importedTabs.map(t=>`<li>${escapeHtml(t)}</li>`).join('')}</ul>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal();renderApp();">Fermer</button>
+      </div>`;
+  }
+  root.innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this && importState.step!==1 && importState.step!==4)return; if(event.target===this && (importState.step===1||importState.step===4)) closeModal();">
+    <div class="modal-box">
+      <h2>Importer des élèves</h2>
+      ${body}
+    </div>
+  </div>`;
+  if(st.step===1){
+    document.getElementById('impType').onchange = e=>{
+      st.raw = document.getElementById('impRaw').value;
+      st.sheetId = document.getElementById('impSheetId').value;
+      st.type = e.target.value;
+      st.sheetTab = IMPORT_TYPES[st.type].sheetTab;
+      renderImportModal();
+    };
+  }
+}
+let gvizReqCounter = 0;
+function fetchFromSheet(){
+  const id = document.getElementById('impSheetId').value.trim();
+  const tabName = document.getElementById('impSheetTab').value.trim();
+  importState.sheetId = id;
+  importState.sheetTab = tabName;
+  const statusEl = document.getElementById('impSheetStatus');
+  if(!id || !tabName){ statusEl.textContent = "Indiquez l'identifiant du classeur et le nom de l'onglet."; return; }
+  statusEl.textContent = '⏳ Chargement depuis Google Sheets...';
+  gvizReqCounter++;
+  const cbName = '__cdbGviz_'+gvizReqCounter;
+  let settled = false;
+  let scriptEl = null;
+  function cleanup(){
+    try{ delete window[cbName]; }catch(e){ window[cbName] = undefined; }
+    if(scriptEl && scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
+  }
+  const timeoutId = setTimeout(function(){
+    if(settled) return; settled = true;
+    statusEl.textContent = "⚠️ Délai dépassé. Vérifiez le nom exact de l'onglet (respectez la casse et les espaces), ou utilisez le copier-coller ci-dessous.";
+    cleanup();
+  }, 15000);
+  window[cbName] = function(resp){
+    if(settled) return; settled = true;
+    clearTimeout(timeoutId);
+    try{
+      if(!resp || resp.status==='error'){
+        const msg = (resp && resp.errors && resp.errors[0] && resp.errors[0].detailed_message) || "onglet introuvable ou accès refusé";
+        throw new Error(msg);
+      }
+      const table = resp.table;
+      let headers = table.cols.map(c=> (c.label && String(c.label).trim()) ? c.label : (c.id||''));
+      let rows = table.rows.map(r=> (r.c||[]).map(cell=>{
+        if(!cell) return '';
+        if(cell.f!=null) return String(cell.f);
+        if(cell.v==null) return '';
+        return String(cell.v);
+      }));
+      // Si Google n'a pas détecté de vraie ligne d'en-tête (colonnes nommées A, B, C...),
+      // les vrais titres de colonnes se trouvent alors dans la 1ère ligne de données.
+      const looksGeneric = headers.every(h=> /^[A-Z]{1,2}$/.test(h));
+      if(looksGeneric && rows.length){
+        headers = rows[0];
+        rows = rows.slice(1);
+      }
+      const raw = [headers].concat(rows).map(r=> r.map(v=> String(v).replace(/\t/g,' ')).join('\t')).join('\n');
+      importState.raw = raw;
+      document.getElementById('impRaw').value = raw;
+      statusEl.textContent = '✅ '+rows.length+' ligne(s) chargée(s) depuis "'+tabName+'". Colonnes détectées : '+headers.join(', ');
+    }catch(err){
+      statusEl.textContent = '⚠️ '+err.message+". Vérifiez le nom exact de l'onglet, ou utilisez le copier-coller ci-dessous.";
+    }
+    cleanup();
+  };
+  const url = 'https://docs.google.com/spreadsheets/d/'+encodeURIComponent(id)+'/gviz/tq?tqx=out:json;responseHandler:'+cbName+'&sheet='+encodeURIComponent(tabName)+'&headers=1';
+  scriptEl = document.createElement('script');
+  scriptEl.src = url;
+  scriptEl.onerror = function(){
+    if(settled) return; settled = true;
+    clearTimeout(timeoutId);
+    statusEl.textContent = "⚠️ Impossible de contacter Google Sheets (connexion, ou classeur non accessible). Utilisez le copier-coller ci-dessous.";
+    cleanup();
+  };
+  document.body.appendChild(scriptEl);
+}
+function renderMappingRow(key,label){
+  const st = importState;
+  const options = st.headers.map((h,i)=>`<option value="${i}" ${String(st.mapping[key])===String(i)?'selected':''}>${escapeHtml(h||('Colonne '+(i+1)))}</option>`).join('');
+  return `<div><label>${escapeHtml(label)}</label><select onchange="importState.mapping['${key}']=this.value===''?-1:parseInt(this.value)">
+    <option value="">— Ignorer —</option>${options}
+  </select></div>`;
+}
+function handleImportFile(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{ importState.raw = reader.result; renderImportModal(); };
+  reader.readAsText(file,'utf-8');
+}
+function importStep1Next(){
+  const raw = document.getElementById('impRaw').value;
+  if(!raw.trim()){ alert('Collez des données ou choisissez un fichier.'); return; }
+  importState.raw = raw;
+  const {headers, rows} = parseDelimited(raw);
+  if(!rows.length){ alert('Aucune ligne de données détectée.'); return; }
+  importState.headers = headers;
+  importState.rows = rows;
+  const def = IMPORT_TYPES[importState.type];
+  const mapping = {};
+  mapping.nom = guessColumn(headers, FIELD_GUESSES.nom);
+  mapping.prenom = guessColumn(headers, FIELD_GUESSES.prenom);
+  def.fields.forEach(f=>{ mapping[f.key] = guessColumn(headers, FIELD_GUESSES[f.key]||[f.label]); });
+  importState.mapping = mapping;
+  importState.step = 2;
+  renderImportModal();
+}
+function importStep2Next(){
+  const st = importState;
+  const def = IMPORT_TYPES[st.type];
+  if(def.perClasse){
+    const classeIdx = st.mapping.classe;
+    if(classeIdx==null || classeIdx<0){ alert('Veuillez indiquer la colonne Classe.'); return; }
+    const vals = new Set();
+    st.rows.forEach(r=>{ const v=(r[classeIdx]||'').trim(); if(v) vals.add(v); });
+    st.classeValues = [...vals].sort((a,b)=>a.localeCompare(b,'fr'));
+    st.selectedClasses = new Set(st.classeValues);
+    st.step = 3;
+    renderImportModal();
+  } else {
+    doImportGroup();
+  }
+}
+function toggleClasse(c){
+  const st = importState;
+  if(st.selectedClasses.has(c)) st.selectedClasses.delete(c); else st.selectedClasses.add(c);
+}
+function importStep3Next(){ doImportClasses(); }
+
+function rowToStudentBase(row, mapping){
+  const get = (k)=> mapping[k]!=null && mapping[k]>=0 ? (row[mapping[k]]||'').trim() : '';
+  const nom = get('nom');
+  const prenom = get('prenom');
+  return {nom, prenom, nomPrenom: `${nom.toUpperCase()} ${toTitleCase(prenom)}`.trim()};
+}
+function diffStudents(existing, incoming){
+  const existingActiveKeys = new Set(existing.filter(s=>!s.archived).map(s=>normalize(s.nom+' '+s.prenom)));
+  const existingAllKeys = new Set(existing.map(s=>normalize(s.nom+' '+s.prenom)));
+  const incomingKeys = incoming.map(s=>normalize(s.nom+' '+s.prenom));
+  let added=0, kept=0;
+  incomingKeys.forEach(k=>{ if(existingAllKeys.has(k)) kept++; else added++; });
+  let removed=0;
+  existingActiveKeys.forEach(k=>{ if(!incomingKeys.includes(k)) removed++; });
+  return {added, removed, kept};
+}
+function mergeStudents(existing, incoming){
+  const byKey = new Map();
+  existing.forEach(s=> byKey.set(normalize(s.nom+' '+s.prenom), s));
+  const result = [];
+  const usedKeys = new Set();
+  incoming.forEach(inc=>{
+    const key = normalize(inc.nom+' '+inc.prenom);
+    usedKeys.add(key);
+    const old = byKey.get(key);
+    if(old){
+      Object.assign(old, inc, {id: old.id, archived:false});
+      result.push(old);
+    } else {
+      result.push(Object.assign({id:uid(), archived:false}, inc));
+    }
+  });
+  existing.forEach(s=>{
+    const key = normalize(s.nom+' '+s.prenom);
+    if(!usedKeys.has(key)){ s.archived = true; result.push(s); }
+  });
+  return result;
+}
+function ensureTab(id, name, kind, niveau, fields){
+  if(!state.tabs[id]){
+    state.tabs[id] = {
+      id, name, kind, niveau: niveau||null, fields,
+      students: [],
+      activityOrder: kind==='classe' ? (NIVEAU_ACTIVITIES[niveau] || ['Suivi']) : ['Appel'],
+      activities: {}
+    };
+    state.order.push(id);
+  }
+  const tab = state.tabs[id];
+  tab.activityOrder.forEach(actName=>{
+    if(!tab.activities[actName]){
+      tab.activities[actName] = {
+        appels: [],
+        evaluations: kind==='classe' ? makeEvaluations() : null,
+        baremes: []
+      };
+    }
+  });
+  return tab;
+}
+function makeEvaluations(){
+  return {
+    echauffementTheorie: {seances:[]},
+    echauffementPratique: {criteria:['Amplitude','Dynamique','Sérieux','Volontaire'], seances:[]},
+    attitude: {criteria:['Ponctuel','Respectueux','Attentif','Volontaire','Sécuritaire','Tenue adaptée'], seances:[]},
+    implication: {criteria:['Implication'], seances:[]},
+    capacites: {criteria:[], seances:[]},
+    performance: {criteria:[], seances:[]},
+    rolesSociaux: {criteria:[], seances:[]},
+    custom: []
+  };
+}
+function doImportClasses(){
+  const st = importState;
+  const def = IMPORT_TYPES.CLASSES;
+  const imported = [];
+  st.selectedClasses.forEach(classeVal=>{
+    const rows = st.rows.filter(r=> (r[st.mapping.classe]||'').trim() === classeVal);
+    const incoming = rows.map(r=>{
+      const base = rowToStudentBase(r, st.mapping);
+      const extra = {};
+      def.fields.forEach(f=>{ extra[f.key] = st.mapping[f.key]!=null && st.mapping[f.key]>=0 ? (r[st.mapping[f.key]]||'').trim() : ''; });
+      return Object.assign(base, extra);
+    }).filter(s=>s.nom || s.prenom);
+    const niveauMatch = classeVal.match(/^\s*(\d)/);
+    const niveau = niveauMatch ? niveauMatch[1] : null;
+    const id = 'classe_'+normalize(classeVal).replace(/\s+/g,'_');
+    const tab = ensureTab(id, classeVal, 'classe', niveau, CLASS_FIELDS);
+    const diff = diffStudents(tab.students, incoming);
+    tab.students = mergeStudents(tab.students, incoming);
+    imported.push(`Classe ${classeVal} : ${diff.kept} inchangé(s), +${diff.added} nouveau(x), −${diff.removed} archivé(s)`);
+  });
+  saveState();
+  importState.step = 4;
+  importState.importedTabs = imported;
+  renderImportModal();
+  renderApp();
+}
+function doImportGroup(){
+  const st = importState;
+  const def = IMPORT_TYPES[st.type];
+  const incoming = st.rows.map(r=>{
+    const base = rowToStudentBase(r, st.mapping);
+    const extra = {};
+    def.fields.forEach(f=>{ extra[f.key] = st.mapping[f.key]!=null && st.mapping[f.key]>=0 ? (r[st.mapping[f.key]]||'').trim() : ''; });
+    return Object.assign(base, extra);
+  }).filter(s=>s.nom || s.prenom);
+  const id = 'groupe_'+normalize(def.groupName).replace(/\s+/g,'_');
+  const tab = ensureTab(id, def.groupName, 'groupe', null, def.fields);
+  const diff = diffStudents(tab.students, incoming);
+  tab.students = mergeStudents(tab.students, incoming);
+  saveState();
+  importState.step = 4;
+  importState.importedTabs = [`${def.groupName} : ${diff.kept} inchangé(s), +${diff.added} nouveau(x), −${diff.removed} archivé(s)`];
+  renderImportModal();
+  renderApp();
+}
+
+/* ============================= BACKUP ============================= */
+function exportBackup(){
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'carnetdebord_sauvegarde_'+todayISO()+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function restoreBackup(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data.tabs || !data.order){ alert('Fichier invalide.'); return; }
+      if(!confirm('Remplacer toutes les données actuelles par cette sauvegarde ?')) return;
+      state = data;
+      saveState();
+      nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}};
+      renderApp();
+    }catch(e){ alert('Impossible de lire ce fichier.'); }
+  };
+  reader.readAsText(file,'utf-8');
+  ev.target.value='';
+}
+function resetAll(){
+  const code = prompt('Pour tout réinitialiser, tapez SUPPRIMER :');
+  if(code==='SUPPRIMER'){
+    state = defaultState();
+    saveState();
+    nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}};
+    renderApp();
+  }
+}
+
+/* ============================= NAV HELPERS ============================= */
+function setNav(patch){ Object.assign(nav, patch); renderApp(); }
+function currentTab(){ return nav.tabId ? state.tabs[nav.tabId] : null; }
+
+/* ============================= RENDER ROOT ============================= */
+const NIVEAU_RANK = {'6':1,'5':2,'4':3,'3':4};
+function orderedTabIds(){
+  return [...state.order].sort((a,b)=>{
+    const ta = state.tabs[a], tb = state.tabs[b];
+    const ra = NIVEAU_RANK[ta.niveau] || 99, rb = NIVEAU_RANK[tb.niveau] || 99;
+    if(ra!==rb) return ra-rb;
+    return ta.name.localeCompare(tb.name, 'fr', {numeric:true});
+  });
+}
+function renderApp(){
+  const app = document.getElementById('app');
+  if(!state.order.length){
+    app.innerHTML = `<div class="card empty">
+      <h2>Bienvenue 👋</h2>
+      <p>Commencez par importer une classe ou un groupe avec le bouton <b>"+ Importer une classe / un groupe"</b> en haut de l'écran.</p>
+    </div>`;
+    return;
+  }
+  const tabOrder = orderedTabIds();
+  if(!nav.tabId || !state.tabs[nav.tabId]){ nav.tabId = tabOrder[0]; nav.section='eleves'; }
+  let html = '';
+  html += `<div class="tabbar">`;
+  tabOrder.forEach(id=>{
+    const t = state.tabs[id];
+    const dotColor = NIVEAU_COLOR[t.niveau] || GROUP_COLOR;
+    html += `<button class="${id===nav.tabId?'active':''}" onclick="setNav({tabId:'${id}',section:'eleves',activity:null})"><span class="niv-dot" style="background:${dotColor}"></span>${escapeHtml(t.name)}</button>`;
+  });
+  html += `<button class="add" onclick="openImportModal()">+ Importer</button>`;
+  html += `</div>`;
+
+  const tab = state.tabs[nav.tabId];
+  html += `<div class="tabbar sub2">`;
+  html += `<button class="${nav.section==='eleves'?'active':''}" onclick="setNav({section:'eleves'})">👥 Élèves</button>`;
+  tab.activityOrder.forEach(actName=>{
+    html += `<button class="${nav.section==='activity'&&nav.activity===actName?'active':''}" onclick="setNav({section:'activity',activity:'${escapeAct(actName)}',activityMode:'appel'})">${escapeHtml(actName)}</button>`;
+  });
+  html += `</div>`;
+
+  html += `<div id="section-content"></div>`;
+  document.getElementById('app').innerHTML = html;
+
+  const target = document.getElementById('section-content');
+  if(nav.section==='eleves'){
+    target.innerHTML = renderEleves(tab);
+  } else {
+    const act = tab.activities[nav.activity];
+    if(!act){ target.innerHTML = '<div class="empty">Activité introuvable.</div>'; return; }
+    if(act.evaluations===null){
+      target.innerHTML = renderAppel(tab, act, nav.activity);
+    } else {
+      target.innerHTML = renderActivity(tab, act, nav.activity);
+    }
+  }
+}
+
+/* ============================= ELEVES ============================= */
+function renderEleves(tab){
+  const students = sortedStudents(tab.students);
+  const archived = tab.students.filter(s=>s.archived);
+  let html = `<div class="card">
+    <div class="toolbar">
+      <h2 style="margin:0;flex:1;">Liste des élèves — ${escapeHtml(tab.name)} (${students.length})</h2>
+      <button class="btn secondary small" onclick="addStudentManual('${tab.id}')">+ Ajouter un élève</button>
+      <button class="btn secondary small" onclick="renameTab('${tab.id}')">✎ Renommer ${tab.kind==='classe'?'la classe':'le groupe'}</button>
+      <button class="btn danger small" onclick="deleteTab('${tab.id}')">🗑 Supprimer ${tab.kind==='classe'?'cette classe':'ce groupe'}</button>
+    </div>
+    <div class="table-scroll"><table class="data"><thead><tr>
+      <th class="name">Nom Prénom</th>
+      ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)}">${escapeHtml(f.label)}</th>`).join('')}
+      <th style="background:${FIXED_HEADER_BG}">—</th>
+    </tr></thead><tbody>`;
+  students.forEach(s=>{
+    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    tab.fields.forEach(f=>{ html += `<td>${escapeHtml(s[f.key]||'')}</td>`; });
+    html += `<td><button class="btn secondary small" onclick="editStudent('${tab.id}','${s.id}')">✎</button> <button class="btn danger small" onclick="deleteStudent('${tab.id}','${s.id}')">🗑</button></td></tr>`;
+  });
+  if(!students.length) html += `<tr><td colspan="${tab.fields.length+2}" class="empty">Aucun élève. Importez une liste ou ajoutez-en manuellement.</td></tr>`;
+  html += `</tbody></table></div>`;
+  if(archived.length){
+    html += `<h3 style="margin-top:16px;">Élèves archivés / plus présents (${archived.length})</h3>
+    <p class="muted">Leurs appels et évaluations déjà enregistrés sont conservés, mais ils n'apparaissent plus dans les tableaux actifs. Un réimport qui retrouve leur nom les réintègre automatiquement.</p>
+    <div class="table-scroll"><table class="data"><thead><tr><th class="name">Nom Prénom</th><th style="background:${FIXED_HEADER_BG}">—</th></tr></thead><tbody>`;
+    archived.forEach(s=>{
+      html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td><td>
+        <button class="btn secondary small" onclick="restoreStudent('${tab.id}','${s.id}')">♻️ Réintégrer</button>
+        <button class="btn danger small" onclick="hardDeleteStudent('${tab.id}','${s.id}')">🗑 Supprimer définitivement</button>
+      </td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+function deleteStudent(tabId, studentId){
+  if(!confirm("Retirer cet élève de la liste ? (ses données d'appel/évaluation existantes seront conservées mais masquées)")) return;
+  const tab = state.tabs[tabId];
+  const s = tab.students.find(x=>x.id===studentId);
+  if(s) s.archived = true;
+  saveState(); renderApp();
+}
+function restoreStudent(tabId, studentId){
+  const tab = state.tabs[tabId];
+  const s = tab.students.find(x=>x.id===studentId);
+  if(s) s.archived = false;
+  saveState(); renderApp();
+}
+function hardDeleteStudent(tabId, studentId){
+  if(!confirm("Supprimer définitivement cet élève et toutes ses données (appels, évaluations) ? Cette action est irréversible.")) return;
+  const tab = state.tabs[tabId];
+  tab.students = tab.students.filter(x=>x.id!==studentId);
+  saveState(); renderApp();
+}
+function deleteTab(tabId){
+  const tab = state.tabs[tabId];
+  if(!tab) return;
+  if(!confirm('Supprimer définitivement "'+tab.name+'" et toutes ses données (élèves, appels, évaluations) ? Cette action est irréversible.')) return;
+  delete state.tabs[tabId];
+  state.order = state.order.filter(id=>id!==tabId);
+  if(nav.tabId===tabId){ nav.tabId=null; nav.section='eleves'; nav.activity=null; }
+  saveState(); renderApp();
+}
+function renameTab(tabId){
+  const tab = state.tabs[tabId];
+  if(!tab) return;
+  const name = prompt('Nouveau nom :', tab.name);
+  if(!name) return;
+  tab.name = name;
+  saveState(); renderApp();
+}
+function addStudentManual(tabId){
+  const tab = state.tabs[tabId];
+  const nom = prompt('Nom de famille :'); if(!nom) return;
+  const prenom = prompt('Prénom :')||'';
+  const s = {id:uid(), nom, prenom, nomPrenom:`${nom.toUpperCase()} ${toTitleCase(prenom)}`.trim(), archived:false};
+  tab.fields.forEach(f=> s[f.key]='');
+  tab.students.push(s);
+  saveState(); renderApp();
+}
+function editStudent(tabId, studentId){
+  const tab = state.tabs[tabId];
+  const s = tab.students.find(x=>x.id===studentId);
+  if(!s) return;
+  const nom = prompt('Nom de famille :', s.nom);
+  if(nom==null) return;
+  const prenom = prompt('Prénom :', s.prenom);
+  if(prenom==null) return;
+  s.nom = nom; s.prenom = prenom;
+  s.nomPrenom = `${nom.toUpperCase()} ${toTitleCase(prenom)}`.trim();
+  tab.fields.forEach(f=>{
+    const val = prompt(f.label+' :', s[f.key]||'');
+    if(val!=null) s[f.key] = val;
+  });
+  saveState(); renderApp();
+}
+
+/* ============================= APPEL (generic, column-per-séance) ============================= */
+function renderAppel(tab, act, activityLabel){
+  const students = sortedStudents(tab.students);
+  let html = `<div class="card">
+    <div class="toolbar">
+      <h2 style="margin:0;flex:1;">Appel — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}</h2>
+      <button class="btn small" onclick="addAppel('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvel appel</button>
+    </div>
+    <p class="legend">Clic sur la présence : Présent → Absent (rouge) → Dispensé ponctuel (orange) → Dispensé (violet). Incidents : chaque code a sa propre nuance de rouge (T, M, Obs, Exc, RA du plus clair au plus vif), ⚠ en orange, R neutre.</p>
+    <div class="table-scroll"><table class="data"><thead><tr><th class="name">Élève</th>`;
+  act.appels.forEach((ap,i)=>{
+    html += `<th style="background:${colorForCol(i)}"><input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕ suppr.</button></th>`;
+  });
+  html += `<th style="background:${FIXED_HEADER_BG}">Récap</th></tr></thead><tbody>`;
+  students.forEach(s=>{
+    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    act.appels.forEach(ap=>{
+      const rec = ap.records[s.id] || {presence:'P', incidents:[]};
+      const col = PRESENCE_COLOR[rec.presence];
+      html += `<td>
+        <div class="appel-cell">
+          <span class="cell-click" style="background:${col.bg};color:${col.fg}" title="${PRESENCE_TITLE[rec.presence]}" onclick="cyclePresence('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">${PRESENCE_LABEL[rec.presence]}</span>
+          <select class="inc-add" title="Ajouter un incident" onchange="if(this.value){ toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}', this.value); } this.value='';">
+            <option value="">+</option>
+            ${INCIDENTS.filter(inc=>!rec.incidents.includes(inc.code)).map(inc=>`<option value="${inc.code}">${inc.code} — ${escapeHtml(inc.label)}</option>`).join('')}
+          </select>
+        </div>
+        ${rec.incidents.length?`<div class="incbar">
+          ${rec.incidents.map(code=>{ const inc = INCIDENTS.find(i=>i.code===code); const bg = INCIDENT_COLOR[code]||'#334155'; return `<button class="incbtn on" style="background:${bg};border-color:${bg};" title="Retirer : ${escapeHtml(inc?inc.label:code)}" onclick="toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}','${code}')">${code} ✕</button>`; }).join('')}
+        </div>`:''}
+      </td>`;
+    });
+    const absCount = act.appels.reduce((n,ap)=> n + (((ap.records[s.id]||{}).presence)==='ABS'?1:0), 0);
+    const incCounts = {};
+    act.appels.forEach(ap=>{ (((ap.records[s.id]||{}).incidents)||[]).forEach(code=>{ incCounts[code] = (incCounts[code]||0)+1; }); });
+    html += `<td>
+      <span class="badge" style="background:${absCount?'#fee2e2':'#f1f5f9'};color:${absCount?'#991b1b':'#64748b'}">${absCount} abs.</span>
+      ${Object.entries(incCounts).map(([code,n])=>{ const bg = INCIDENT_COLOR[code]||'#334155'; return `<span class="badge" style="background:${bg};color:#fff;margin-left:2px;">${code}${n>1?'×'+n:''}</span>`; }).join('')}
+    </td>`;
+    html += `</tr>`;
+  });
+  if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève dans cette liste.</td></tr>`;
+  html += `</tbody></table></div></div>`;
+  return html;
+}
+function escapeAct(s){ return String(s).replace(/"/g,'&quot;').replace(/'/g,"\\'"); }
+function findActivity(tabId, activityLabel){ return state.tabs[tabId].activities[activityLabel]; }
+function presenceForDate(act, date, studentId){
+  const ap = act.appels.find(a=>a.date===date);
+  if(!ap) return null;
+  const rec = ap.records[studentId];
+  return rec ? rec.presence : null;
+}
+function renderAttendanceOverride(presence){
+  const col = PRESENCE_COLOR[presence];
+  return `<span class="badge" style="background:${col.bg};color:${col.fg}" title="${PRESENCE_TITLE[presence]} à l'appel de ce jour — non noté">${PRESENCE_LABEL[presence]}</span>`;
+}
+function addAppel(tabId, activityLabel){
+  const act = findActivity(tabId, activityLabel);
+  const tab = state.tabs[tabId];
+  const records = {};
+  tab.students.forEach(s=>{ records[s.id] = {presence:'P', incidents:[]}; });
+  act.appels.push({id:uid(), date:todayISO(), records});
+  saveState(); renderApp();
+}
+function updateAppelDate(tabId, activityLabel, appelId, val){
+  const act = findActivity(tabId, activityLabel);
+  const ap = act.appels.find(a=>a.id===appelId);
+  if(ap) ap.date = val;
+  saveState();
+}
+function deleteAppel(tabId, activityLabel, appelId){
+  if(!confirm('Supprimer définitivement cet appel et ses données de présence ?')) return;
+  const act = findActivity(tabId, activityLabel);
+  act.appels = act.appels.filter(a=>a.id!==appelId);
+  saveState(); renderApp();
+}
+function cyclePresence(tabId, activityLabel, appelId, studentId){
+  const act = findActivity(tabId, activityLabel);
+  const ap = act.appels.find(a=>a.id===appelId);
+  if(!ap.records[studentId]) ap.records[studentId] = {presence:'P', incidents:[]};
+  const rec = ap.records[studentId];
+  const idx = PRESENCE_CYCLE.indexOf(rec.presence);
+  rec.presence = PRESENCE_CYCLE[(idx+1)%PRESENCE_CYCLE.length];
+  saveState(); renderApp();
+}
+function toggleIncident(tabId, activityLabel, appelId, studentId, code){
+  const act = findActivity(tabId, activityLabel);
+  const ap = act.appels.find(a=>a.id===appelId);
+  if(!ap.records[studentId]) ap.records[studentId] = {presence:'P', incidents:[]};
+  const rec = ap.records[studentId];
+  const i = rec.incidents.indexOf(code);
+  if(i>=0) rec.incidents.splice(i,1); else rec.incidents.push(code);
+  saveState(); renderApp();
+}
+
+/* ============================= ACTIVITY (Appel / Évaluations) ============================= */
+function renderActivity(tab, act, activityLabel){
+  if(!nav.activityMode) nav.activityMode='appel';
+  let html = `<div class="tabbar sub3">
+    <button class="${nav.activityMode==='appel'?'active':''}" onclick="setNav({activityMode:'appel'})">📋 Appel</button>
+    <button class="${nav.activityMode==='eval'?'active':''}" onclick="setNav({activityMode:'eval', evalCat: nav.evalCat || 'echauffement'})">📊 Évaluations</button>
+    <button class="${nav.activityMode==='bareme'?'active':''}" style="--cat:#ca8a04" onclick="setNav({activityMode:'bareme'})">📐 Barème</button>
+  </div>`;
+  if(nav.activityMode==='appel'){
+    html += renderAppel(tab, act, activityLabel);
+  } else if(nav.activityMode==='bareme'){
+    html += renderBareme(tab, act, activityLabel);
+  } else {
+    html += renderEvaluations(tab, act, activityLabel);
+  }
+  return html;
+}
+
+function renderEvaluations(tab, act, activityLabel){
+  const ev = act.evaluations;
+  if(!nav.evalCat) nav.evalCat = 'echauffement';
+  let tabsHtml = `<div class="tabbar sub3">`;
+  EVAL_CATS.forEach(c=>{
+    tabsHtml += `<button class="${nav.evalCat===c.key?'active':''}" style="--cat:${EVAL_CAT_COLOR[c.key]}" onclick="setNav({evalCat:'${c.key}'})">${escapeHtml(c.label)}</button>`;
+  });
+  ev.custom.forEach((c,i)=>{
+    const color = CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length];
+    tabsHtml += `<button class="${nav.evalCat===c.id?'active':''}" style="--cat:${color}" onclick="setNav({evalCat:'${c.id}'})">${escapeHtml(c.title)}</button>`;
+  });
+  tabsHtml += `<button class="add" onclick="addCustomEval('${tab.id}','${escapeAct(activityLabel)}')">+ Ajouter un onglet</button>`;
+  tabsHtml += `<button class="${nav.evalCat==='recap'?'active':''}" style="--cat:${EVAL_CAT_COLOR.recap}" onclick="setNav({evalCat:'recap'})">🏁 Récap</button>`;
+  tabsHtml += `</div>`;
+
+  let body = '';
+  if(nav.evalCat==='echauffement'){
+    body = renderEchauffement(tab, act, activityLabel);
+  } else if(nav.evalCat==='attitude'){
+    const legend = 'Critères observés (informatifs, une seule note par séance) : '+ev.attitude.criteria.map(escapeHtml).join(', ');
+    body = renderSimpleEval(tab, act, activityLabel, 'attitude', ev.attitude, 'Attitude — '+tab.name, legend, EVAL_CAT_COLOR.attitude);
+  } else if(nav.evalCat==='implication'){
+    const legend = 'TB = persévérant · S = Réglo · F = amuseur / minimaliste · I = fainéant';
+    body = renderSimpleEval(tab, act, activityLabel, 'implication', ev.implication, 'Implication — '+tab.name, legend, EVAL_CAT_COLOR.implication);
+  } else if(nav.evalCat==='capacites'){
+    const legend = ev.capacites.criteria.length ? ('Critères (informatifs) : '+ev.capacites.criteria.map(escapeHtml).join(', ')) : 'Aucun critère défini (informatif). Cliquez sur "✎ Critères" pour en ajouter.';
+    body = renderSimpleEval(tab, act, activityLabel, 'capacites', ev.capacites, 'Capacités — '+tab.name, legend, EVAL_CAT_COLOR.capacites, true);
+  } else if(nav.evalCat==='performance'){
+    const legend = ev.performance.criteria.length ? ('Critères (informatifs) : '+ev.performance.criteria.map(escapeHtml).join(', ')) : 'Aucun critère défini (informatif). Cliquez sur "✎ Critères" pour en ajouter.';
+    body = renderSimpleEval(tab, act, activityLabel, 'performance', ev.performance, 'Performance — '+tab.name, legend, EVAL_CAT_COLOR.performance, true);
+  } else if(nav.evalCat==='rolesSociaux'){
+    const legend = ev.rolesSociaux.criteria.length ? ('Critères (informatifs) : '+ev.rolesSociaux.criteria.map(escapeHtml).join(', ')) : 'Aucun critère défini (informatif). Cliquez sur "✎ Critères" pour en ajouter.';
+    body = renderSimpleEval(tab, act, activityLabel, 'rolesSociaux', ev.rolesSociaux, 'Rôles sociaux — '+tab.name, legend, EVAL_CAT_COLOR.rolesSociaux, true);
+  } else if(nav.evalCat==='recap'){
+    body = renderRecap(tab, act, activityLabel);
+  } else {
+    const customIdx = ev.custom.findIndex(c=>c.id===nav.evalCat);
+    const custom = customIdx>=0 ? ev.custom[customIdx] : null;
+    if(custom){
+      const color = CUSTOM_EVAL_COLORS[customIdx % CUSTOM_EVAL_COLORS.length];
+      const legend = custom.criteria.length ? ('Critères (informatifs) : '+custom.criteria.map(escapeHtml).join(', ')) : 'Aucun critère défini (informatif).';
+      body = renderSimpleEval(tab, act, activityLabel, nav.evalCat, custom, custom.title+' — '+tab.name, legend, color, true);
+    }
+  }
+  return tabsHtml + body;
+}
+
+function addCustomEval(tabId, activityLabel){
+  const title = prompt("Titre du nouvel onglet d'évaluation :");
+  if(!title) return;
+  const critRaw = prompt('Critères informatifs (séparés par des virgules) — un simple rappel, pas une note par critère :','Critère 1, Critère 2');
+  const criteria = (critRaw||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const act = findActivity(tabId, activityLabel);
+  const id = 'custom_'+uid();
+  act.evaluations.custom.push({id, title, criteria, seances:[]});
+  saveState();
+  setNav({evalCat:id});
+}
+function renameCustomEval(tabId, activityLabel, key){
+  const act = findActivity(tabId, activityLabel);
+  const custom = act.evaluations.custom.find(c=>c.id===key);
+  const title = prompt('Nouveau titre :', custom.title);
+  if(!title) return;
+  custom.title = title;
+  saveState(); renderApp();
+}
+function deleteCustomEval(tabId, activityLabel, key){
+  if(!confirm("Supprimer définitivement cet onglet d'évaluation et toutes ses notes ? Cette action est irréversible.")) return;
+  const act = findActivity(tabId, activityLabel);
+  act.evaluations.custom = act.evaluations.custom.filter(c=>c.id!==key);
+  saveState();
+  setNav({evalCat:'echauffement'});
+}
+
+/* ============================= BARÈME (images) ============================= */
+function renderBareme(tab, act, activityLabel){
+  const items = act.baremes || [];
+  const color = '#ca8a04';
+  let html = `<div style="background:${lightTint(color)};border-radius:16px;padding:4px;">
+  <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${color},${shadeColor(color,-24)});">
+    <div class="toolbar">
+      <h2 style="margin:0;flex:1;">Barème — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}</h2>
+      <button class="btn small" onclick="openBaremeFilePicker('${tab.id}','${escapeAct(activityLabel)}')">+ Importer une image</button>
+    </div>
+    <p class="legend" style="border-left-color:${color};">Importez vos grilles / barèmes (photo ou capture d'écran) pour les avoir sous la main pendant l'évaluation. Cliquez sur une image pour l'agrandir.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;">
+      ${items.map(it=>`
+        <div style="width:150px;">
+          <img src="${it.dataUrl}" style="width:150px;height:150px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12);" onclick="openBaremeViewer('${tab.id}','${escapeAct(activityLabel)}','${it.id}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;gap:4px;">
+            <span class="muted" style="font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">${escapeHtml(it.name)}</span>
+            <button class="btn danger small" style="padding:2px 6px;flex-shrink:0;" onclick="deleteBareme('${tab.id}','${escapeAct(activityLabel)}','${it.id}')">🗑</button>
+          </div>
+        </div>`).join('')}
+    </div>
+    ${!items.length?'<p class="empty">Aucune image importée pour le moment.</p>':''}
+  </div></div>`;
+  return html;
+}
+let baremeTarget = null;
+function openBaremeFilePicker(tabId, activityLabel){
+  baremeTarget = {tabId, activityLabel};
+  document.getElementById('baremeFile').click();
+}
+function readAndCompressImage(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w>maxDim || h>maxDim){
+          if(w>h){ h = Math.round(h*maxDim/w); w = maxDim; } else { w = Math.round(w*maxDim/h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function handleBaremeFiles(ev){
+  const files = Array.from(ev.target.files||[]);
+  const target = baremeTarget;
+  ev.target.value = '';
+  if(!target || !files.length) return;
+  Promise.all(files.map(f=> readAndCompressImage(f, 1400, .82).then(dataUrl=>({id:uid(), name:f.name, dataUrl}))))
+    .then(items=>{
+      const act = findActivity(target.tabId, target.activityLabel);
+      if(!act.baremes) act.baremes = [];
+      act.baremes.push(...items);
+      saveState(); renderApp();
+    })
+    .catch(()=>{ alert("Impossible de lire une ou plusieurs images."); });
+}
+function deleteBareme(tabId, activityLabel, itemId){
+  if(!confirm('Supprimer définitivement cette image ?')) return;
+  const act = findActivity(tabId, activityLabel);
+  act.baremes = (act.baremes||[]).filter(x=>x.id!==itemId);
+  saveState(); renderApp();
+}
+function openBaremeViewer(tabId, activityLabel, itemId){
+  const act = findActivity(tabId, activityLabel);
+  const it = (act.baremes||[]).find(x=>x.id===itemId);
+  if(!it) return;
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this) closeModal()">
+    <div class="modal-box" style="max-width:95vw;padding:10px;border-top-color:#ca8a04;">
+      <div class="modal-foot" style="justify-content:space-between;margin-top:0;margin-bottom:8px;">
+        <strong>${escapeHtml(it.name)}</strong>
+        <button class="btn ghost small" onclick="closeModal()">✕ Fermer</button>
+      </div>
+      <img src="${it.dataUrl}" style="max-width:100%;max-height:80vh;display:block;margin:0 auto;border-radius:8px;">
+    </div>
+  </div>`;
+}
+
+/* ---- Échauffement : Théorie (6e/4e) + Pratique (toutes classes) ---- */
+function renderEchauffement(tab, act, activityLabel){
+  const niveau = tab.niveau;
+  const showTheorie = niveau==='6' || niveau==='4';
+  let tabsHtml = `<div class="pillrow">`;
+  if(showTheorie){
+    const label = niveau==='6' ? 'Théorie 6ème' : 'Théorie 4ème';
+    tabsHtml += `<button class="pill ${nav.echSub==='theorie'?'active':''}" onclick="setNav({echSub:'theorie'})">${label}</button>`;
+  }
+  tabsHtml += `<button class="pill ${nav.echSub==='pratique'?'active':''}" onclick="setNav({echSub:'pratique'})">Pratique</button>`;
+  tabsHtml += `</div>`;
+  if(!showTheorie && nav.echSub==='theorie') nav.echSub='pratique';
+  let body = '';
+  if(nav.echSub==='theorie' && showTheorie){
+    body = renderTheorie(tab, act, activityLabel, niveau);
+  } else {
+    const pratique = act.evaluations.echauffementPratique;
+    const legend = 'Critères observés (informatifs, une seule note par séance) : '+pratique.criteria.map(escapeHtml).join(', ');
+    body = renderSimpleEval(tab, act, activityLabel, 'echauffementPratique', pratique, 'Échauffement pratique — '+tab.name, legend, EVAL_CAT_COLOR.echauffement);
+  }
+  return tabsHtml + body;
+}
+
+function renderTheorie(tab, act, activityLabel, niveau){
+  return niveau==='6' ? renderTheorie6(tab, act, activityLabel) : renderTheorie4(tab, act, activityLabel);
+}
+/* 6ème : toute la classe est interrogée à chaque séance, un mark +/-/~ par élève */
+function renderTheorie6(tab, act, activityLabel){
+  const data = act.evaluations.echauffementTheorie;
+  const students = sortedStudents(tab.students);
+  const catColor = EVAL_CAT_COLOR.echauffement;
+  let html = `<div style="background:${lightTint(catColor)};border-radius:16px;padding:4px;">
+  <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${catColor},${shadeColor(catColor,-24)});">
+    <div class="toolbar">
+      <h2 style="margin:0;flex:1;">Échauffement théorie — 6ème — ${escapeHtml(tab.name)}</h2>
+      ${data.seances.length?`<button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="redrawTheorie6('${tab.id}','${escapeAct(activityLabel)}','${data.seances[data.seances.length-1].id}')">🎲 Tirer au sort</button>`:''}
+      <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
+    </div>
+    <p class="legend" style="border-left-color:${catColor};">➡️ = élève tiré au sort pour commencer. Le bouton "🎲 Tirer au sort" ci-dessus retire au sort pour la séance la plus récente. + = juste · − = ne sait pas · ~ = pas tout juste, pour chaque élève. Note finale = cumul des erreurs (−) sur toutes les séances : 0-1 → TB, 2-3 → S, 4-5 → F, 6+ → I.</p>
+    <div class="table-scroll"><table class="data"><thead><tr><th class="name" style="background:${catColor}">Élève</th>`;
+  data.seances.forEach((se,i)=>{
+    html += `<th style="background:${colorForColCat(catColor,i)}">
+      <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameTheorieSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
+      <input type="date" value="${se.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateTheorieDate('${tab.id}','${escapeAct(activityLabel)}','${se.id}',this.value)">
+      <button class="th-del" title="Supprimer cette séance" onclick="deleteTheorieSeance('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">✕ suppr.</button>
+    </th>`;
+  });
+  html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th></tr></thead><tbody>`;
+  students.forEach(s=>{
+    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    data.seances.forEach(se=>{
+      const presence = presenceForDate(act, se.date, s.id);
+      if(presence && presence!=='P'){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
+      const isStarter = se.starterId===s.id;
+      const mark = (se.marks && se.marks[s.id]) || '';
+      const col = mark ? MARK_COLOR[mark] : {bg:'#f1f5f9',fg:'#64748b'};
+      html += `<td>${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
+    });
+    const errs = data.seances.reduce((n,se)=> n + ((se.marks && se.marks[s.id]==='-')?1:0), 0);
+    const note = theorieNote(errs);
+    const lc = LEVEL_COLOR[note];
+    html += `<td><span class="badge" style="background:${lc.bg};color:${lc.fg}">${note} (${errs})</span></td></tr>`;
+  });
+  if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
+  html += `</tbody></table></div></div></div>`;
+  return html;
+}
+/* 4ème : un seul élève "meneur" (tiré au sort) est noté par séance, sur ses erreurs pendant qu'il mène l'échauffement */
+function renderTheorie4(tab, act, activityLabel){
+  const data = act.evaluations.echauffementTheorie;
+  const students = sortedStudents(tab.students);
+  const catColor = EVAL_CAT_COLOR.echauffement;
+  let html = `<div style="background:${lightTint(catColor)};border-radius:16px;padding:4px;">
+  <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${catColor},${shadeColor(catColor,-24)});">
+    <div class="toolbar">
+      <h2 style="margin:0;flex:1;">Échauffement théorie — 4ème — ${escapeHtml(tab.name)}</h2>
+      ${data.seances.length?`<button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="redrawTheorie4('${tab.id}','${escapeAct(activityLabel)}','${data.seances[data.seances.length-1].id}')">🎲 Tirer au sort</button>`:''}
+      <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
+    </div>
+    <p class="legend" style="border-left-color:${catColor};">La case en surbrillance indique l'élève tiré·e au sort pour mener l'échauffement (seul·e noté·e). Le bouton "🎲 Tirer au sort" ci-dessus retire au sort pour la séance la plus récente. Cliquez dessus pour choisir TB, S, F ou I — seule la lettre compte : TB (0-1 erreur), S (2-3), F (4-5), I (6 ou +) sont des repères indicatifs.</p>
+    <div class="table-scroll"><table class="data"><thead><tr><th class="name" style="background:${catColor}">Élève</th>`;
+  data.seances.forEach((se,i)=>{
+    html += `<th style="background:${colorForColCat(catColor,i)}">
+      <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameTheorieSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
+      <input type="date" value="${se.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateTheorieDate('${tab.id}','${escapeAct(activityLabel)}','${se.id}',this.value)">
+      <button class="th-del" title="Supprimer cette séance" onclick="deleteTheorieSeance('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">✕ suppr.</button>
+    </th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  students.forEach(s=>{
+    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    data.seances.forEach(se=>{
+      const isStarter = se.starterId===s.id;
+      if(!isStarter){ html += `<td class="muted">—</td>`; return; }
+      const presence = presenceForDate(act, se.date, s.id);
+      if(presence && presence!=='P'){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
+      const grade = se.grade || '';
+      const col = grade ? LEVEL_COLOR[grade] : {bg:'#f1f5f9',fg:'#64748b'};
+      html += `<td style="background:${shadeColor(catColor,88)};">
+        <span class="cell-click" style="background:${col.bg};color:${col.fg};box-shadow:0 0 0 2px ${catColor};" title="Élève tiré·e au sort — cliquer pour noter" onclick="cycleTheorie4Grade('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${grade||'?'}</span>
+      </td>`;
+    });
+    html += `</tr>`;
+  });
+  if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
+  html += `</tbody></table></div></div></div>`;
+  return html;
+}
+function theorieNote(errs){
+  if(errs<=1) return 'TB';
+  if(errs<=3) return 'S';
+  if(errs<=5) return 'F';
+  return 'I';
+}
+function addTheorieSeance(tabId, activityLabel){
+  const act = findActivity(tabId, activityLabel);
+  const tab = state.tabs[tabId];
+  const students = sortedStudents(tab.students);
+  const starter = students.length ? students[Math.floor(Math.random()*students.length)].id : null;
+  act.evaluations.echauffementTheorie.seances.push({id:uid(), date:todayISO(), starterId:starter, marks:{}, grade:'', title:''});
+  saveState(); renderApp();
+}
+function redrawTheorie4(tabId, activityLabel, seanceId){
+  const act = findActivity(tabId, activityLabel);
+  const tab = state.tabs[tabId];
+  const students = sortedStudents(tab.students);
+  const se = act.evaluations.echauffementTheorie.seances.find(s=>s.id===seanceId);
+  if(!se || !students.length) return;
+  se.starterId = students[Math.floor(Math.random()*students.length)].id;
+  se.grade = '';
+  saveState(); renderApp();
+}
+function redrawTheorie6(tabId, activityLabel, seanceId){
+  const act = findActivity(tabId, activityLabel);
+  const tab = state.tabs[tabId];
+  const students = sortedStudents(tab.students);
+  const se = act.evaluations.echauffementTheorie.seances.find(s=>s.id===seanceId);
+  if(!se || !students.length) return;
+  se.starterId = students[Math.floor(Math.random()*students.length)].id;
+  saveState(); renderApp();
+}
+function cycleTheorie4Grade(tabId, activityLabel, seanceId, studentId){
+  const act = findActivity(tabId, activityLabel);
+  const se = act.evaluations.echauffementTheorie.seances.find(s=>s.id===seanceId);
+  if(se.starterId!==studentId) return;
+  const cur = se.grade || '';
+  const idx = LEVEL_CYCLE.indexOf(cur);
+  se.grade = LEVEL_CYCLE[(idx+1)%LEVEL_CYCLE.length];
+  saveState(); renderApp();
+}
+function updateTheorieDate(tabId, activityLabel, seanceId, val){
+  const act = findActivity(tabId, activityLabel);
+  const se = act.evaluations.echauffementTheorie.seances.find(s=>s.id===seanceId);
+  if(se) se.date = val;
+  saveState();
+}
+function renameTheorieSeanceTitle(tabId, activityLabel, seanceId){
+  const act = findActivity(tabId, activityLabel);
+  const se = act.evaluations.echauffementTheorie.seances.find(s=>s.id===seanceId);
+  const title = prompt('Titre de cette séance (optionnel) :', se.title||'');
+  if(title==null) return;
+  se.title = title;
+  saveState(); renderApp();
+}
+function deleteTheorieSeance(tabId, activityLabel, seanceId){
+  if(!confirm('Supprimer définitivement cette séance et ses notes ?')) return;
+  const act = findActivity(tabId, activityLabel);
+  const data = act.evaluations.echauffementTheorie;
+  data.seances = data.seances.filter(s=>s.id!==seanceId);
+  saveState(); renderApp();
+}
+function cycleMark(tabId, activityLabel, seanceId, studentId){
+  const act = findActivity(tabId, activityLabel);
+  const se = act.evaluations.echauffementTheorie.seances.find(s=>s.id===seanceId);
+  const cur = se.marks[studentId] || '';
+  const idx = MARK_CYCLE.indexOf(cur);
+  se.marks[studentId] = MARK_CYCLE[(idx+1)%MARK_CYCLE.length];
+  saveState(); renderApp();
+}
+
+/* ---- Évaluation simple : une seule note TB/S/F/I par élève et par séance (colonne par séance, comme l'appel).
+   Les critères affichés sont purement informatifs (rappel de ce qu'il faut observer), pas des colonnes séparées. ---- */
+function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHtml, catColor, allowCriteriaEdit){
+  const students = sortedStudents(tab.students);
+  const isCustom = key.startsWith('custom_');
+  let html = `<div style="background:${lightTint(catColor)};border-radius:16px;padding:4px;">
+  <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${catColor},${shadeColor(catColor,-24)});">
+    <div class="toolbar">
+      <h2 style="margin:0;flex:1;">${escapeHtml(title)}</h2>
+      ${allowCriteriaEdit?`<button class="btn secondary small" onclick="editCriteria('${tab.id}','${escapeAct(activityLabel)}','${key}')">✎ Critères</button>`:''}
+      ${isCustom?`<button class="btn secondary small" onclick="renameCustomEval('${tab.id}','${escapeAct(activityLabel)}','${key}')">✎ Renommer</button><button class="btn danger small" onclick="deleteCustomEval('${tab.id}','${escapeAct(activityLabel)}','${key}')">🗑 Supprimer l'onglet</button>`:''}
+      <button class="btn small" onclick="addSimpleSeance('${tab.id}','${escapeAct(activityLabel)}','${key}')">+ Nouvelle évaluation</button>
+    </div>
+    <p class="legend" style="border-left-color:${catColor};">${legendHtml}</p>
+    <div class="table-scroll"><table class="data"><thead><tr><th class="name" style="background:${catColor}">Élève</th>`;
+  evalObj.seances.forEach((se,i)=>{
+    html += `<th style="background:${colorForColCat(catColor,i)}">
+      <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameSimpleSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
+      <input type="date" value="${se.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateSimpleDate('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}',this.value)">
+      <button class="th-del" title="Supprimer cette évaluation" onclick="deleteSimpleSeance('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}')">✕ suppr.</button>
+    </th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  students.forEach(s=>{
+    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    evalObj.seances.forEach(se=>{
+      const presence = presenceForDate(act, se.date, s.id);
+      if(presence && presence!=='P'){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
+      const val = se.marks[s.id] || '';
+      const col = val ? LEVEL_COLOR[val] : {bg:'#f1f5f9',fg:'#64748b'};
+      html += `<td><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleSimpleLevel('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">${val||'·'}</span></td>`;
+    });
+    html += `</tr>`;
+  });
+  if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
+  html += `</tbody></table></div></div></div>`;
+  return html;
+}
+function findSimpleEval(act, key){
+  return key.startsWith('custom_') ? act.evaluations.custom.find(c=>c.id===key) : act.evaluations[key];
+}
+function addSimpleSeance(tabId, activityLabel, key){
+  const act = findActivity(tabId, activityLabel);
+  findSimpleEval(act, key).seances.push({id:uid(), date:todayISO(), marks:{}, title:''});
+  saveState(); renderApp();
+}
+function deleteSimpleSeance(tabId, activityLabel, key, seanceId){
+  if(!confirm('Supprimer définitivement cette évaluation et ses notes ?')) return;
+  const act = findActivity(tabId, activityLabel);
+  const evalObj = findSimpleEval(act, key);
+  evalObj.seances = evalObj.seances.filter(s=>s.id!==seanceId);
+  saveState(); renderApp();
+}
+function updateSimpleDate(tabId, activityLabel, key, seanceId, val){
+  const act = findActivity(tabId, activityLabel);
+  const se = findSimpleEval(act, key).seances.find(s=>s.id===seanceId);
+  if(se) se.date = val;
+  saveState();
+}
+function renameSimpleSeanceTitle(tabId, activityLabel, key, seanceId){
+  const act = findActivity(tabId, activityLabel);
+  const se = findSimpleEval(act, key).seances.find(s=>s.id===seanceId);
+  const title = prompt('Titre de cette évaluation (optionnel) :', se.title||'');
+  if(title==null) return;
+  se.title = title;
+  saveState(); renderApp();
+}
+function cycleSimpleLevel(tabId, activityLabel, key, seanceId, studentId){
+  const act = findActivity(tabId, activityLabel);
+  const se = findSimpleEval(act, key).seances.find(s=>s.id===seanceId);
+  const cur = se.marks[studentId] || '';
+  const idx = LEVEL_CYCLE.indexOf(cur);
+  se.marks[studentId] = LEVEL_CYCLE[(idx+1)%LEVEL_CYCLE.length];
+  saveState(); renderApp();
+}
+function editCriteria(tabId, activityLabel, key){
+  const act = findActivity(tabId, activityLabel);
+  const evalObj = findSimpleEval(act, key);
+  const raw = prompt('Critères informatifs (séparés par des virgules) — un simple rappel, pas une note par critère :', evalObj.criteria.join(', '));
+  if(raw==null) return;
+  evalObj.criteria = raw.split(',').map(s=>s.trim()).filter(Boolean);
+  saveState(); renderApp();
+}
+
+/* ---- Récap ---- */
+function levelAverage(values){
+  const nums = values.map(v=>LEVEL_SCORE[v]).filter(n=>n!=null);
+  if(!nums.length) return '';
+  const avg = Math.round(nums.reduce((a,b)=>a+b,0)/nums.length);
+  return {4:'TB',3:'S',2:'F',1:'I'}[avg] || '';
+}
+function renderRecap(tab, act, activityLabel){
+  const ev = act.evaluations;
+  const students = sortedStudents(tab.students);
+  const cols = [
+    {label:'Éch. théorie', color:EVAL_CAT_COLOR.echauffement, get:(s)=>{
+      if(tab.niveau==='4'){
+        const notes = ev.echauffementTheorie.seances.filter(se=>se.starterId===s.id && se.grade).map(se=>se.grade);
+        return levelAverage(notes);
+      }
+      const errs = ev.echauffementTheorie.seances.reduce((n,se)=> n + ((se.marks && se.marks[s.id]==='-')?1:0),0);
+      return ev.echauffementTheorie.seances.length ? theorieNote(errs) : '';
+    }},
+    {label:'Éch. pratique', color:shadeColor(EVAL_CAT_COLOR.echauffement,-20), get:(s)=> levelAverage(ev.echauffementPratique.seances.map(se=> se.marks[s.id]))},
+    {label:'Attitude', color:EVAL_CAT_COLOR.attitude, get:(s)=> levelAverage(ev.attitude.seances.map(se=> se.marks[s.id]))},
+    {label:'Implication', color:EVAL_CAT_COLOR.implication, get:(s)=> levelAverage(ev.implication.seances.map(se=> se.marks[s.id]))},
+    {label:'Capacités', color:EVAL_CAT_COLOR.capacites, get:(s)=> levelAverage(ev.capacites.seances.map(se=> se.marks[s.id]))},
+    {label:'Performance', color:EVAL_CAT_COLOR.performance, get:(s)=> levelAverage(ev.performance.seances.map(se=> se.marks[s.id]))},
+    {label:'Rôles sociaux', color:EVAL_CAT_COLOR.rolesSociaux, get:(s)=> levelAverage(ev.rolesSociaux.seances.map(se=> se.marks[s.id]))},
+  ];
+  ev.custom.forEach((c,i)=>{
+    cols.push({label:c.title, color:CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length], get:(s)=> levelAverage(c.seances.map(se=> se.marks[s.id]))});
+  });
+  const recapColor = EVAL_CAT_COLOR.recap;
+  let html = `<div style="background:${lightTint(recapColor)};border-radius:16px;padding:4px;">
+  <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${recapColor},${shadeColor(recapColor,-24)});"><h2>Récapitulatif — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}</h2>
+    <div class="table-scroll"><table class="data"><thead><tr><th class="name" style="background:${recapColor}">Élève</th>
+    ${cols.map(c=>`<th style="background:linear-gradient(135deg, ${c.color}, ${shadeColor(c.color,-16)})">${escapeHtml(c.label)}</th>`).join('')}
+    </tr></thead><tbody>`;
+  students.forEach(s=>{
+    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    cols.forEach(c=>{
+      const v = c.get(s);
+      if(!v){ html += `<td>·</td>`; return; }
+      const lc = LEVEL_COLOR[v];
+      html += `<td><span class="recap-level" style="background:${lc.bg};color:${lc.fg}">${v}</span></td>`;
+    });
+    html += `</tr>`;
+  });
+  if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
+  html += `</tbody></table></div></div></div>`;
+  return html;
+}
+
+/* ============================= INIT ============================= */
+renderApp();
+</script>
+</body>
+</html>
