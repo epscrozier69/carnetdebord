@@ -937,7 +937,7 @@ function importStep2Next(){
     const vals = new Set();
     st.rows.forEach(r=>{ const v=(r[classeIdx]||'').trim(); if(v) vals.add(v); });
     st.classeValues = [...vals].sort((a,b)=>a.localeCompare(b,'fr'));
-    st.selectedClasses = new Set(st.classeValues);
+    st.selectedClasses = new Set();
     st.step = 3;
     renderImportModal();
   } else {
@@ -1244,7 +1244,6 @@ function renderApp(){
     const dotColor = NIVEAU_COLOR[t.niveau] || GROUP_COLOR;
     html += `<button class="${id===nav.tabId?'active':''}" onclick="setNav({tabId:'${id}',section:'eleves',activity:null})"><span class="niv-dot" style="background:${dotColor}"></span>${escapeHtml(t.name)}</button>`;
   });
-  html += `<button class="add" onclick="openImportModal()">+ Importer</button>`;
   html += `</div>`;
 
   const tab = state.tabs[nav.tabId];
@@ -1287,15 +1286,15 @@ function renderEleves(tab){
     </div>
     <div class="table-scroll"><table class="data"><thead><tr>
       <th class="num">N°</th>
-      <th class="name">Nom Prénom</th>
-      ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)}">${escapeHtml(f.label)}</th>`).join('')}
+      <th class="name" style="max-width:210px;white-space:nowrap;">Nom Prénom</th>
+      ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)};${f.key==='projetAccompagnement'?'max-width:70px;white-space:normal;':''}">${escapeHtml(f.label)}</th>`).join('')}
       <th style="background:${FIXED_HEADER_BG}">Dispense</th>
       <th style="background:${FIXED_HEADER_BG}">—</th>
     </tr></thead><tbody>`;
   const todayIso = todayISO();
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
-    tab.fields.forEach(f=>{ html += `<td>${escapeHtml(s[f.key]||'')}</td>`; });
+    html += `<tr><td class="num">${idx+1}</td><td class="name" style="max-width:210px;white-space:nowrap;">${escapeHtml(s.nomPrenom)}</td>`;
+    tab.fields.forEach(f=>{ html += `<td${f.key==='projetAccompagnement'?' style="max-width:70px;white-space:normal;"':''}>${escapeHtml(s[f.key]||'')}</td>`; });
     const allDisp = s.dispenses||[];
     const disp = activeDispenseOn(s, todayIso);
     const tc = disp ? (DISP_TYPE_COLOR[disp.type]||{bg:'#f1f5f9',fg:'#64748b'}) : null;
