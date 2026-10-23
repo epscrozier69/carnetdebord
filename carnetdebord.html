@@ -287,6 +287,8 @@ table.data tr:nth-child(even) td.name{background:#dde1f2;}
 .th-del{position:absolute;top:3px;right:3px;width:17px;height:17px;line-height:15px;display:flex;align-items:center;justify-content:center;background:#ef4444;border:1px solid rgba(255,255,255,.6);color:#fff;border-radius:50%;font-size:.6rem;font-weight:800;padding:0;cursor:pointer;transition:.15s;}
 .th-del:hover{background:#b91c1c;}
 .col-count{font-size:.66rem;font-weight:800;background:rgba(255,255,255,.25);border-radius:5px;padding:1px 6px;margin-bottom:2px;display:inline-block;}
+.add-mini{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:.8rem;font-weight:800;line-height:1;border:none;cursor:pointer;padding:0;vertical-align:middle;}
+.add-mini:hover{background:#312e81;}
 
 
 .modal-overlay{
@@ -558,6 +560,7 @@ function openImportModal(){
   renderImportModal();
 }
 function closeModal(){
+  if(typeof stopDispenseCamera==='function') stopDispenseCamera();
   document.getElementById('modalRoot').innerHTML='';
   importState=null;
 }
@@ -1112,24 +1115,25 @@ function renderEleves(tab){
       <button class="btn danger small" onclick="deleteTab('${tab.id}')">🗑 Supprimer ${tab.kind==='classe'?'cette classe':'ce groupe'}</button>
     </div>
     <div class="table-scroll"><table class="data"><thead><tr>
+      <th class="num">N°</th>
       <th class="name">Nom Prénom</th>
       ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)}">${escapeHtml(f.label)}</th>`).join('')}
       <th style="background:${FIXED_HEADER_BG}">Dispense</th>
       <th style="background:${FIXED_HEADER_BG}">—</th>
     </tr></thead><tbody>`;
   const todayIso = todayISO();
-  students.forEach(s=>{
-    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+  students.forEach((s,idx)=>{
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     tab.fields.forEach(f=>{ html += `<td>${escapeHtml(s[f.key]||'')}</td>`; });
     const disp = activeDispenseOn(s, todayIso);
     const tc = disp ? (DISP_TYPE_COLOR[disp.type]||{bg:'#f1f5f9',fg:'#64748b'}) : null;
-    html += `<td>
-      ${disp?`<span class="badge" style="background:${tc.bg};color:${tc.fg}" title="Dispensé jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'(indéterminée)'}">${DISP_TYPE_LABEL[disp.type]||disp.type}</span>`:'<span class="muted">—</span>'}
-      <button class="btn secondary small" style="padding:2px 6px;" onclick="openDispenseModal('${tab.id}','${s.id}')">+ DISP</button>
+    html += `<td style="white-space:nowrap;">
+      ${disp?`<span class="badge" style="background:${tc.bg};color:${tc.fg};margin-right:3px;" title="Dispensé jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'(indéterminée)'}">${DISP_TYPE_LABEL[disp.type]||disp.type}</span>`:''}
+      <button class="add-mini" title="Gérer les dispenses" onclick="openDispenseModal('${tab.id}','${s.id}')">+</button>
     </td>`;
     html += `<td><button class="btn secondary small" onclick="editStudent('${tab.id}','${s.id}')">✎</button> <button class="btn danger small" onclick="deleteStudent('${tab.id}','${s.id}')">🗑</button></td></tr>`;
   });
-  if(!students.length) html += `<tr><td colspan="${tab.fields.length+3}" class="empty">Aucun élève. Importez une liste ou ajoutez-en manuellement.</td></tr>`;
+  if(!students.length) html += `<tr><td colspan="${tab.fields.length+4}" class="empty">Aucun élève. Importez une liste ou ajoutez-en manuellement.</td></tr>`;
   html += `</tbody></table></div>`;
   if(archived.length){
     html += `<h3 style="margin-top:16px;">Élèves archivés / plus présents (${archived.length})</h3>
@@ -1275,9 +1279,8 @@ function renderDispenseModal(){
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
-        <button class="btn secondary small" onclick="document.getElementById('dispPhotoFile').click()">📷 Photo du certificat</button>
-        <input type="file" id="dispPhotoFile" accept="image/*" capture="environment" style="display:none" onchange="handleDispensePhotoFile(event)">
-        ${dispensePending.photo?`<img src="${dispensePending.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">`:'<span class="muted" style="font-size:.76rem;">Aucune photo</span>'}
+        <button class="btn secondary small" onclick="openDispenseCamera()">📷 Prendre une photo</button>
+        ${dispensePending.photo?`<img src="${dispensePending.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border);"><button class="btn danger small" style="padding:2px 6px;" onclick="clearDispensePhoto()">🗑</button>`:'<span class="muted" style="font-size:.76rem;">Aucune photo</span>'}
       </div>
       <p class="legend" style="margin:0 0 4px;">Si « Autorisé à ne pas assister au cours » est coché, l'élève sera automatiquement marqué <b>Disp</b> à chaque nouvel appel créé pendant la période de dispense.</p>
       <div class="modal-foot">
@@ -1287,14 +1290,60 @@ function renderDispenseModal(){
     </div>
   </div>`;
 }
-function handleDispensePhotoFile(ev){
-  const file = ev.target.files[0];
-  ev.target.value = '';
-  if(!file || !dispensePending) return;
-  readAndCompressImage(file, 1400, .82).then(dataUrl=>{
-    dispensePending.photo = dataUrl;
-    renderDispenseModal();
-  }).catch(()=>{ alert("Impossible de lire cette image."); });
+function clearDispensePhoto(){
+  if(!dispensePending) return;
+  dispensePending.photo = null;
+  renderDispenseModal();
+}
+let dispCamStream = null;
+function openDispenseCamera(){
+  if(!dispensePending) return;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    alert("La caméra n'est pas accessible sur ce navigateur.");
+    return;
+  }
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay">
+    <div class="modal-box" style="max-width:480px;text-align:center;">
+      <h2>Photo du certificat</h2>
+      <video id="dispCamVideo" autoplay playsinline style="width:100%;border-radius:10px;background:#000;max-height:60vh;"></video>
+      <canvas id="dispCamCanvas" style="display:none;"></canvas>
+      <div class="modal-foot" style="justify-content:center;">
+        <button class="btn ghost" onclick="closeDispenseCamera()">Annuler</button>
+        <button class="btn" onclick="captureDispensePhoto()">📸 Capturer</button>
+      </div>
+    </div>
+  </div>`;
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false})
+    .then(stream=>{
+      dispCamStream = stream;
+      const v = document.getElementById('dispCamVideo');
+      if(v){ v.srcObject = stream; } else { stream.getTracks().forEach(t=>t.stop()); dispCamStream=null; }
+    })
+    .catch(()=>{
+      alert("Impossible d'accéder à la caméra. Vérifiez les autorisations de votre navigateur.");
+      renderDispenseModal();
+    });
+}
+function stopDispenseCamera(){
+  if(dispCamStream){ dispCamStream.getTracks().forEach(t=>t.stop()); dispCamStream=null; }
+}
+function closeDispenseCamera(){
+  stopDispenseCamera();
+  renderDispenseModal();
+}
+function captureDispensePhoto(){
+  const v = document.getElementById('dispCamVideo');
+  const c = document.getElementById('dispCamCanvas');
+  if(!v || !v.videoWidth){ alert("La caméra n'est pas encore prête, réessayez dans un instant."); return; }
+  const maxDim = 1400;
+  let w = v.videoWidth, h = v.videoHeight;
+  if(w>maxDim || h>maxDim){ if(w>h){ h = Math.round(h*maxDim/w); w = maxDim; } else { w = Math.round(w*maxDim/h); h = maxDim; } }
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(v, 0, 0, w, h);
+  const dataUrl = c.toDataURL('image/jpeg', .82);
+  stopDispenseCamera();
+  if(dispensePending) dispensePending.photo = dataUrl;
+  renderDispenseModal();
 }
 function saveDispense(){
   if(!dispensePending) return;
@@ -1334,14 +1383,18 @@ function renderAppel(tab, act, activityLabel){
       <h2 style="margin:0;flex:1;">Appel — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}</h2>
       <button class="btn small" onclick="addAppel('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvel appel</button>
     </div>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>`;
+    <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th><th style="background:${FIXED_HEADER_BG};">Disp.</th>`;
   act.appels.forEach((ap,i)=>{
     const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='P'?1:0), 0);
     html += `<th style="background:${colorForCol(i)};position:relative;"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.</div><br><input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕</button></th>`;
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Récap</th></tr></thead><tbody>`;
+  const todayIso = todayISO();
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    const disp = activeDispenseOn(s, todayIso);
+    const dispDot = disp ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${(DISP_TYPE_COLOR[disp.type]||{}).fg||'#64748b'};margin-right:3px;" title="${DISP_TYPE_LABEL[disp.type]||disp.type} — jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'indéterminée'}"></span>` : '';
+    html += `<td style="white-space:nowrap;text-align:center;">${dispDot}<button class="add-mini" title="Gérer les dispenses" onclick="openDispenseModal('${tab.id}','${s.id}')">+</button></td>`;
     act.appels.forEach(ap=>{
       const rec = ap.records[s.id] || {presence:'P', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
@@ -1466,14 +1519,11 @@ function renderEvaluations(tab, act, activityLabel){
     const legend = 'TB = persévérant · S = Réglo · F = amuseur / minimaliste · I = fainéant';
     body = renderSimpleEval(tab, act, activityLabel, 'implication', ev.implication, 'Implication — '+tab.name, legend, EVAL_CAT_COLOR.implication);
   } else if(nav.evalCat==='capacites'){
-    const legend = ev.capacites.criteria.length ? ('Critères (informatifs) : '+ev.capacites.criteria.map(escapeHtml).join(', ')) : 'Aucun critère défini (informatif). Cliquez sur "✎ Critères" pour en ajouter.';
-    body = renderSimpleEval(tab, act, activityLabel, 'capacites', ev.capacites, 'Capacités — '+tab.name, legend, EVAL_CAT_COLOR.capacites, true);
+    body = renderSimpleEval(tab, act, activityLabel, 'capacites', ev.capacites, 'Capacités — '+tab.name, 'Critères informatifs (un simple repère, pas de note par critère) :', EVAL_CAT_COLOR.capacites, true);
   } else if(nav.evalCat==='performance'){
-    const legend = ev.performance.criteria.length ? ('Critères (informatifs) : '+ev.performance.criteria.map(escapeHtml).join(', ')) : 'Aucun critère défini (informatif). Cliquez sur "✎ Critères" pour en ajouter.';
-    body = renderSimpleEval(tab, act, activityLabel, 'performance', ev.performance, 'Performance — '+tab.name, legend, EVAL_CAT_COLOR.performance, true);
+    body = renderSimpleEval(tab, act, activityLabel, 'performance', ev.performance, 'Performance — '+tab.name, 'Critères informatifs (un simple repère, pas de note par critère) :', EVAL_CAT_COLOR.performance, true);
   } else if(nav.evalCat==='rolesSociaux'){
-    const legend = ev.rolesSociaux.criteria.length ? ('Critères (informatifs) : '+ev.rolesSociaux.criteria.map(escapeHtml).join(', ')) : 'Aucun critère défini (informatif). Cliquez sur "✎ Critères" pour en ajouter.';
-    body = renderSimpleEval(tab, act, activityLabel, 'rolesSociaux', ev.rolesSociaux, 'Rôles sociaux — '+tab.name, legend, EVAL_CAT_COLOR.rolesSociaux, true);
+    body = renderSimpleEval(tab, act, activityLabel, 'rolesSociaux', ev.rolesSociaux, 'Rôles sociaux — '+tab.name, 'Critères informatifs (un simple repère, pas de note par critère) :', EVAL_CAT_COLOR.rolesSociaux, true);
   } else if(nav.evalCat==='recap'){
     body = renderRecap(tab, act, activityLabel);
   } else {
@@ -1481,8 +1531,7 @@ function renderEvaluations(tab, act, activityLabel){
     const custom = customIdx>=0 ? ev.custom[customIdx] : null;
     if(custom){
       const color = CUSTOM_EVAL_COLORS[customIdx % CUSTOM_EVAL_COLORS.length];
-      const legend = custom.criteria.length ? ('Critères (informatifs) : '+custom.criteria.map(escapeHtml).join(', ')) : 'Aucun critère défini (informatif).';
-      body = renderSimpleEval(tab, act, activityLabel, nav.evalCat, custom, custom.title+' — '+tab.name, legend, color, true);
+      body = renderSimpleEval(tab, act, activityLabel, nav.evalCat, custom, custom.title+' — '+tab.name, 'Critères informatifs (un simple repère, pas de note par critère) :', color, true);
     }
   }
   return tabsHtml + body;
@@ -1791,11 +1840,11 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
   <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${catColor},${shadeColor(catColor,-24)});">
     <div class="toolbar">
       <h2 style="margin:0;flex:1;">${escapeHtml(title)}</h2>
-      ${allowCriteriaEdit?`<button class="btn secondary small" onclick="editCriteria('${tab.id}','${escapeAct(activityLabel)}','${key}')">✎ Critères</button>`:''}
       ${isCustom?`<button class="btn secondary small" onclick="renameCustomEval('${tab.id}','${escapeAct(activityLabel)}','${key}')">✎ Renommer</button><button class="btn danger small" onclick="deleteCustomEval('${tab.id}','${escapeAct(activityLabel)}','${key}')">🗑 Supprimer l'onglet</button>`:''}
       <button class="btn small" onclick="addSimpleSeance('${tab.id}','${escapeAct(activityLabel)}','${key}')">+ Nouvelle évaluation</button>
     </div>
-    <p class="legend" style="border-left-color:${catColor};">${legendHtml}</p>
+    <p class="legend" style="border-left-color:${catColor};${allowCriteriaEdit?'margin-bottom:4px;':''}">${legendHtml}</p>
+    ${allowCriteriaEdit?renderCriteriaChips(tab.id, activityLabel, key, evalObj.criteria):''}
     <div class="table-scroll"><table class="data"><thead><tr><th class="name" style="background:${catColor}">Élève</th>`;
   evalObj.seances.forEach((se,i)=>{
     html += `<th style="background:${colorForColCat(catColor,i)}">
@@ -1857,12 +1906,24 @@ function cycleSimpleLevel(tabId, activityLabel, key, seanceId, studentId){
   se.marks[studentId] = LEVEL_CYCLE[(idx+1)%LEVEL_CYCLE.length];
   saveState(); renderApp();
 }
-function editCriteria(tabId, activityLabel, key){
+function renderCriteriaChips(tabId, activityLabel, key, criteria){
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0 10px;">
+    ${criteria.map((c,i)=>`<span class="pill" style="padding:3px 6px 3px 10px;display:inline-flex;align-items:center;gap:6px;">${escapeHtml(c)}<button class="th-del" style="position:static;width:15px;height:15px;font-size:.55rem;flex-shrink:0;" title="Retirer ce critère" onclick="removeCriterion('${tabId}','${escapeAct(activityLabel)}','${key}',${i})">✕</button></span>`).join('')}
+    <button class="add-mini" title="Ajouter un critère" onclick="addCriterion('${tabId}','${escapeAct(activityLabel)}','${key}')">+</button>
+  </div>`;
+}
+function addCriterion(tabId, activityLabel, key){
   const act = findActivity(tabId, activityLabel);
   const evalObj = findSimpleEval(act, key);
-  const raw = prompt('Critères informatifs (séparés par des virgules) — un simple rappel, pas une note par critère :', evalObj.criteria.join(', '));
-  if(raw==null) return;
-  evalObj.criteria = raw.split(',').map(s=>s.trim()).filter(Boolean);
+  const val = prompt('Nouveau critère :');
+  if(!val || !val.trim()) return;
+  evalObj.criteria.push(val.trim());
+  saveState(); renderApp();
+}
+function removeCriterion(tabId, activityLabel, key, index){
+  const act = findActivity(tabId, activityLabel);
+  const evalObj = findSimpleEval(act, key);
+  evalObj.criteria.splice(index,1);
   saveState(); renderApp();
 }
 
