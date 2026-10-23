@@ -223,12 +223,9 @@ table.data td.name,table.data th.name{
   font-weight:600;
   color:var(--ink);
   width:auto;
-  max-width:130px;
-  white-space:normal;
-  word-break:break-word;
+  white-space:nowrap;
   line-height:1.15;
   font-size:.76rem;
-  overflow:hidden;
   box-shadow:2px 0 4px rgba(0,0,0,.04);
 }
 table.data th.name{background:var(--primary-dark);color:#fff;z-index:5;}
@@ -460,6 +457,26 @@ function migrateState(){
 }
 function activeDispenseOn(s, dateISO){
   return (s.dispenses||[]).find(d=> d.autorise && d.dateDebut<=dateISO && (!d.dateFin || dateISO<=d.dateFin));
+}
+function studentMatchKey(s){ return normalize((s.nom||'')+' '+(s.prenom||'')); }
+function findStudentDispensesAcrossTabs(matchKey, excludeTabId){
+  const out = [];
+  Object.values(state.tabs).forEach(tab=>{
+    (tab.students||[]).forEach(s=>{
+      if(studentMatchKey(s)!==matchKey) return;
+      (s.dispenses||[]).forEach(d=> out.push({tabId:tab.id, tabName:tab.name, studentId:s.id, d}));
+    });
+  });
+  return out;
+}
+function activeDispenseAnywhere(s, tabId, dateISO){
+  const entries = findStudentDispensesAcrossTabs(studentMatchKey(s));
+  for(const e of entries){
+    if(e.d.autorise && e.d.dateDebut<=dateISO && (!e.d.dateFin || dateISO<=e.d.dateFin)){
+      return {disp:e.d, tabId:e.tabId, tabName:e.tabName, isLocal:e.tabId===tabId};
+    }
+  }
+  return null;
 }
 let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}};
 let importState = null;
@@ -1286,20 +1303,21 @@ function renderEleves(tab){
     </div>
     <div class="table-scroll"><table class="data"><thead><tr>
       <th class="num">N°</th>
-      <th class="name" style="max-width:210px;white-space:nowrap;">Nom Prénom</th>
+      <th class="name">Nom Prénom</th>
       ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)};${f.key==='projetAccompagnement'?'max-width:70px;white-space:normal;':''}">${escapeHtml(f.label)}</th>`).join('')}
       <th style="background:${FIXED_HEADER_BG}">Dispense</th>
       <th style="background:${FIXED_HEADER_BG}">—</th>
     </tr></thead><tbody>`;
   const todayIso = todayISO();
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name" style="max-width:210px;white-space:nowrap;">${escapeHtml(s.nomPrenom)}</td>`;
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     tab.fields.forEach(f=>{ html += `<td${f.key==='projetAccompagnement'?' style="max-width:70px;white-space:normal;"':''}>${escapeHtml(s[f.key]||'')}</td>`; });
     const allDisp = s.dispenses||[];
-    const disp = activeDispenseOn(s, todayIso);
+    const match = activeDispenseAnywhere(s, tab.id, todayIso);
+    const disp = match && match.disp;
     const tc = disp ? (DISP_TYPE_COLOR[disp.type]||{bg:'#f1f5f9',fg:'#64748b'}) : null;
     html += `<td style="white-space:nowrap;">
-      ${disp?`<span class="badge" style="background:${tc.bg};color:${tc.fg};margin-right:3px;" title="Dispensé jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'(indéterminée)'}">${DISP_TYPE_LABEL[disp.type]||disp.type}</span>`:''}
+      ${disp?`<span class="badge" style="background:${tc.bg};color:${tc.fg};margin-right:3px;" title="Dispensé jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'(indéterminée)'}${match.isLocal?'':' — saisie dans '+escapeHtml(match.tabName)}">${DISP_TYPE_LABEL[disp.type]||disp.type}${match.isLocal?'':' ↗'}</span>`:''}
       ${allDisp.length?`<span class="badge" style="background:#e2e8f0;color:#475569;margin-right:3px;" title="${allDisp.length} dispense(s) enregistrée(s) au total">${allDisp.length}</span>`:''}
       <button class="add-mini" title="Gérer les dispenses" onclick="openDispenseModal('${tab.id}','${s.id}')">+</button>
     </td>`;
@@ -1418,21 +1436,24 @@ function renderDispenseModal(){
   const s = tab && tab.students.find(x=>x.id===studentId);
   if(!s){ closeModal(); return; }
   const todayIso = todayISO();
-  const list = (s.dispenses||[]).slice().sort((a,b)=> b.dateDebut.localeCompare(a.dateDebut));
+  const list = findStudentDispensesAcrossTabs(studentMatchKey(s)).sort((a,b)=> b.d.dateDebut.localeCompare(a.d.dateDebut));
   document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this) closeModal()">
     <div class="modal-box" style="max-width:620px;">
       <h2>Dispenses — ${escapeHtml(s.nomPrenom)}</h2>
+      <p class="legend" style="margin-top:0;">Les dispenses saisies dans une autre classe ou un autre groupe pour le/la même élève apparaissent aussi ici, et s'appliquent automatiquement partout.</p>
       ${list.length?`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-        ${list.map(d=>{
+        ${list.map(({tabId:srcTabId, tabName, d})=>{
+          const isLocal = srcTabId===tabId;
           const active = d.autorise && d.dateDebut<=todayIso && (!d.dateFin || todayIso<=d.dateFin);
           const tc = DISP_TYPE_COLOR[d.type] || {bg:'#f1f5f9',fg:'#64748b'};
           return `<div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;padding:8px;${active?'box-shadow:0 0 0 2px #581c87;':''}">
             <div style="flex:1;">
               <span class="badge" style="background:${tc.bg};color:${tc.fg}">${DISP_TYPE_LABEL[d.type]||d.type}</span>
               ${active?'<span class="badge" style="background:#581c87;color:#fff;margin-left:4px;">En cours</span>':''}
+              ${isLocal?'':`<span class="badge" style="background:#e2e8f0;color:#475569;margin-left:4px;">↗ ${escapeHtml(tabName)}</span>`}
               <div style="font-size:.76rem;color:var(--ink-soft);margin-top:3px;">${fmtDateFR(d.dateDebut)} → ${d.dateFin?fmtDateFR(d.dateFin):'indéterminée'} · ${d.autorise?'Dispensé du cours (DISP auto à l’appel)':'Présence au cours requise'}</div>
             </div>
-            <button class="btn danger small" onclick="deleteDispense('${tabId}','${studentId}','${d.id}')">🗑</button>
+            ${isLocal?`<button class="btn danger small" onclick="deleteDispense('${tabId}','${studentId}','${d.id}')">🗑</button>`:''}
           </div>`;
         }).join('')}
       </div>`:`<p class="muted">Aucune dispense enregistrée.</p>`}
@@ -1505,8 +1526,9 @@ function renderAppel(tab, act, activityLabel){
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     const allDisp = s.dispenses||[];
-    const disp = activeDispenseOn(s, todayIso);
-    const dispDot = disp ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${(DISP_TYPE_COLOR[disp.type]||{}).fg||'#64748b'};margin-right:3px;" title="${DISP_TYPE_LABEL[disp.type]||disp.type} — jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'indéterminée'}"></span>` : '';
+    const match = activeDispenseAnywhere(s, tab.id, todayIso);
+    const disp = match && match.disp;
+    const dispDot = disp ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${(DISP_TYPE_COLOR[disp.type]||{}).fg||'#64748b'};margin-right:3px;" title="${DISP_TYPE_LABEL[disp.type]||disp.type} — jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'indéterminée'}${match.isLocal?'':' — saisie dans '+escapeHtml(match.tabName)}"></span>` : '';
     const dispCount = allDisp.length?`<span class="muted" style="font-size:.64rem;margin-right:2px;" title="${allDisp.length} dispense(s) enregistrée(s) au total">${allDisp.length}</span>`:'';
     html += `<td style="white-space:nowrap;text-align:center;">${dispCount}${dispDot}<button class="add-mini" title="Gérer les dispenses" onclick="openDispenseModal('${tab.id}','${s.id}')">+</button></td>`;
     act.appels.forEach(ap=>{
@@ -1555,7 +1577,7 @@ function addAppel(tabId, activityLabel){
   const tab = state.tabs[tabId];
   const date = todayISO();
   const records = {};
-  tab.students.forEach(s=>{ records[s.id] = {presence: activeDispenseOn(s, date) ? 'DISP' : 'P', incidents:[]}; });
+  tab.students.forEach(s=>{ records[s.id] = {presence: activeDispenseAnywhere(s, tabId, date) ? 'DISP' : 'P', incidents:[]}; });
   act.appels.push({id:uid(), date, records});
   saveState(); renderApp();
 }
