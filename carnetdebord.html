@@ -269,7 +269,7 @@ textarea.rawpaste{width:100%;min-height:140px;font-family:ui-monospace,Consolas,
 .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;}
 .formgrid label{font-size:.75rem;color:var(--ink-soft);display:block;margin-bottom:3px;}
 .formgrid select,.formgrid input{width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;}
-.checklist{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px;}
+.checklist{display:grid;grid-template-columns:repeat(auto-fill, minmax(190px,1fr));gap:2px 14px;max-height:55vh;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:10px;}
 .checklist label{display:flex;gap:8px;align-items:center;padding:4px 0;font-size:.85rem;}
 .steps{display:flex;gap:6px;margin-bottom:12px;}
 .step{flex:1;text-align:center;font-size:.7rem;padding:6px;border-radius:7px;background:var(--primary-light);color:var(--primary);font-weight:800;}
@@ -1032,17 +1032,38 @@ function editStudent(tabId, studentId){
   const tab = state.tabs[tabId];
   const s = tab.students.find(x=>x.id===studentId);
   if(!s) return;
-  const nom = prompt('Nom de famille :', s.nom);
-  if(nom==null) return;
-  const prenom = prompt('Prénom :', s.prenom);
-  if(prenom==null) return;
+  const fieldsHtml = tab.fields.map(f=>`<div><label>${escapeHtml(f.label)}</label><input id="editField_${f.key}" value="${escapeHtml(s[f.key]||'')}"></div>`).join('');
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this) closeModal()">
+    <div class="modal-box" style="max-width:540px;">
+      <h2>Modifier l'élève</h2>
+      <div class="formgrid" style="grid-template-columns:1fr 1fr;">
+        <div><label>Nom de famille</label><input id="editField_nom" value="${escapeHtml(s.nom)}"></div>
+        <div><label>Prénom</label><input id="editField_prenom" value="${escapeHtml(s.prenom)}"></div>
+        ${fieldsHtml}
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="closeModal()">Annuler</button>
+        <button class="btn" onclick="saveEditStudent('${tabId}','${studentId}')">Enregistrer</button>
+      </div>
+    </div>
+  </div>`;
+}
+function saveEditStudent(tabId, studentId){
+  const tab = state.tabs[tabId];
+  const s = tab.students.find(x=>x.id===studentId);
+  if(!s) return;
+  const nom = document.getElementById('editField_nom').value.trim();
+  const prenom = document.getElementById('editField_prenom').value.trim();
+  if(!nom){ alert('Le nom est obligatoire.'); return; }
   s.nom = nom; s.prenom = prenom;
   s.nomPrenom = `${nom.toUpperCase()} ${toTitleCase(prenom)}`.trim();
   tab.fields.forEach(f=>{
-    const val = prompt(f.label+' :', s[f.key]||'');
-    if(val!=null) s[f.key] = val;
+    const el = document.getElementById('editField_'+f.key);
+    if(el) s[f.key] = el.value;
   });
-  saveState(); renderApp();
+  saveState();
+  closeModal();
+  renderApp();
 }
 
 /* ============================= APPEL (generic, column-per-séance) ============================= */
