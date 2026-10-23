@@ -287,6 +287,12 @@ table.data tr:nth-child(even) td.name{background:#dde1f2;}
 .col-count{font-size:.66rem;font-weight:800;background:rgba(255,255,255,.25);border-radius:5px;padding:1px 6px;margin-bottom:2px;display:inline-block;}
 .add-mini{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:.8rem;font-weight:800;line-height:1;border:none;cursor:pointer;padding:0;vertical-align:middle;}
 .add-mini:hover{background:#312e81;}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:.85rem;flex-shrink:0;transition:.15s;}
+.icon-btn:hover{transform:scale(1.08);}
+.icon-btn.edit{color:var(--primary);border-color:var(--primary-light);}
+.icon-btn.edit:hover{background:var(--primary-light);}
+.icon-btn.danger{color:#dc2626;border-color:#fecaca;}
+.icon-btn.danger:hover{background:#fef2f2;}
 
 
 .modal-overlay{
@@ -1290,17 +1296,36 @@ function renderApp(){
 }
 
 /* ============================= ELEVES ============================= */
+function findDuplicateNameIssues(tabId){
+  const tab = state.tabs[tabId];
+  if(!tab) return [];
+  const out = [];
+  tab.students.forEach(s=>{
+    if(s.archived) return;
+    if(!s.nom || !s.prenom) return;
+    if(normalize(s.nom)!==normalize(s.prenom)) return;
+    const words = s.nom.trim().split(/\s+/);
+    if(words.length<2) return;
+    const prenom = words[words.length-1];
+    const nom = words.slice(0,-1).join(' ');
+    out.push({studentId:s.id, currentNom:s.nom, currentPrenom:s.prenom, proposedNom:nom, proposedPrenom:toTitleCase(prenom)});
+  });
+  return out;
+}
 function renderEleves(tab){
   const students = sortedStudents(tab.students);
   const archived = tab.students.filter(s=>s.archived);
+  const nameIssues = findDuplicateNameIssues(tab.id);
   let html = `<div class="card">
     <div class="toolbar">
-      <h2 style="margin:0;flex:1;">Liste des élèves — ${escapeHtml(tab.name)} (${students.length})</h2>
+      <h2 style="margin:0;flex:1;display:flex;align-items:center;gap:6px;">Liste des élèves — ${escapeHtml(tab.name)} (${students.length})
+        <button class="icon-btn edit" title="Renommer ${tab.kind==='classe'?'la classe':'le groupe'}" onclick="renameTab('${tab.id}')">✎</button>
+        <button class="icon-btn danger" title="Supprimer ${tab.kind==='classe'?'cette classe':'ce groupe'}" onclick="deleteTab('${tab.id}')">🗑</button>
+      </h2>
       <button class="btn secondary small" onclick="addStudentManual('${tab.id}')">+ Ajouter un élève</button>
+      ${nameIssues.length?`<button class="btn danger small" onclick="openFixNamesModal('${tab.id}')">🩹 Corriger ${nameIssues.length} nom(s) dupliqué(s)</button>`:''}
       <button class="btn secondary small" onclick="exportClassExcel('${tab.id}')">📊 Exporter Excel</button>
       <button class="btn secondary small" onclick="exportClassPDF('${tab.id}')">🖨 Exporter PDF</button>
-      <button class="btn secondary small" onclick="renameTab('${tab.id}')">✎ Renommer ${tab.kind==='classe'?'la classe':'le groupe'}</button>
-      <button class="btn danger small" onclick="deleteTab('${tab.id}')">🗑 Supprimer ${tab.kind==='classe'?'cette classe':'ce groupe'}</button>
     </div>
     <div class="table-scroll"><table class="data"><thead><tr>
       <th class="num">N°</th>
@@ -1340,6 +1365,50 @@ function renderEleves(tab){
   }
   html += `</div>`;
   return html;
+}
+function openFixNamesModal(tabId){
+  const tab = state.tabs[tabId];
+  const issues = findDuplicateNameIssues(tabId);
+  if(!issues.length){ closeModal(); return; }
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this) closeModal()">
+    <div class="modal-box" style="max-width:680px;">
+      <h2>Corriger les noms dupliqués — ${escapeHtml(tab.name)}</h2>
+      <p class="legend">Ces élèves ont le même texte dans Nom et Prénom (souvent dû à un mauvais mappage de colonnes à l'import). Vérifie/corrige la proposition ci-dessous avant d'appliquer — décoche une ligne pour l'ignorer.</p>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto;">
+        ${issues.map((it,i)=>`<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;padding:8px;">
+          <input type="checkbox" id="fixInclude_${i}" checked style="width:auto;flex-shrink:0;">
+          <div style="flex:1;font-size:.78rem;color:var(--ink-soft);">Actuel : <b>${escapeHtml(it.currentNom)}</b> / <b>${escapeHtml(it.currentPrenom)}</b></div>
+          <div style="flex-shrink:0;"><label style="font-size:.7rem;color:var(--ink-soft);display:block;">Nom</label><input id="fixNom_${i}" value="${escapeHtml(it.proposedNom)}" style="width:120px;padding:4px;border:1px solid var(--border);border-radius:6px;"></div>
+          <div style="flex-shrink:0;"><label style="font-size:.7rem;color:var(--ink-soft);display:block;">Prénom</label><input id="fixPrenom_${i}" value="${escapeHtml(it.proposedPrenom)}" style="width:120px;padding:4px;border:1px solid var(--border);border-radius:6px;"></div>
+        </div>`).join('')}
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="closeModal()">Annuler</button>
+        <button class="btn" onclick='applyFixNames("${tabId}", ${JSON.stringify(issues.map(it=>it.studentId))})'>Appliquer la correction</button>
+      </div>
+    </div>
+  </div>`;
+}
+function applyFixNames(tabId, studentIds){
+  const tab = state.tabs[tabId];
+  if(!tab) return;
+  let count = 0;
+  studentIds.forEach((studentId,i)=>{
+    const includeEl = document.getElementById('fixInclude_'+i);
+    if(!includeEl || !includeEl.checked) return;
+    const nom = document.getElementById('fixNom_'+i).value.trim();
+    const prenom = document.getElementById('fixPrenom_'+i).value.trim();
+    if(!nom || !prenom) return;
+    const s = tab.students.find(x=>x.id===studentId);
+    if(!s) return;
+    s.nom = nom; s.prenom = prenom;
+    s.nomPrenom = `${nom.toUpperCase()} ${toTitleCase(prenom)}`.trim();
+    count++;
+  });
+  saveState();
+  closeModal();
+  renderApp();
+  if(count) alert(count+' élève(s) corrigé(s).');
 }
 function deleteStudent(tabId, studentId){
   if(!confirm("Retirer cet élève de la liste ? (ses données d'appel/évaluation existantes seront conservées mais masquées)")) return;
@@ -1438,6 +1507,7 @@ function renderDispenseModal(){
   if(!s){ closeModal(); return; }
   const todayIso = todayISO();
   const list = findStudentDispensesAcrossTabs(studentMatchKey(s)).sort((a,b)=> b.d.dateDebut.localeCompare(a.d.dateDebut));
+  const editing = dispensePending.editingDispenseId ? (s.dispenses||[]).find(d=>d.id===dispensePending.editingDispenseId) : null;
   document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this) closeModal()">
     <div class="modal-box" style="max-width:620px;">
       <h2>Dispenses — ${escapeHtml(s.nomPrenom)}</h2>
@@ -1454,34 +1524,45 @@ function renderDispenseModal(){
               ${isLocal?'':`<span class="badge" style="background:#e2e8f0;color:#475569;margin-left:4px;">↗ ${escapeHtml(tabName)}</span>`}
               <div style="font-size:.76rem;color:var(--ink-soft);margin-top:3px;">${fmtDateFR(d.dateDebut)} → ${d.dateFin?fmtDateFR(d.dateFin):'indéterminée'} · ${d.autorise?'Dispensé du cours (DISP auto à l’appel)':'Présence au cours requise'}</div>
             </div>
-            ${isLocal?`<button class="btn danger small" onclick="deleteDispense('${tabId}','${studentId}','${d.id}')">🗑</button>`:''}
+            ${isLocal?`<button class="btn secondary small" onclick="editDispense('${tabId}','${studentId}','${d.id}')">✎</button> <button class="btn danger small" onclick="deleteDispense('${tabId}','${studentId}','${d.id}')">🗑</button>`:''}
           </div>`;
         }).join('')}
       </div>`:`<p class="muted">Aucune dispense enregistrée.</p>`}
-      <h3>Nouvelle dispense</h3>
+      <h3>${editing?'Modifier la dispense':'Nouvelle dispense'}</h3>
       <div class="formgrid">
-        <div><label>Date de début</label><input type="date" id="dispDateDebut" value="${todayIso}"></div>
-        <div><label>Date de fin</label><input type="date" id="dispDateFin" value=""></div>
+        <div><label>Date de début</label><input type="date" id="dispDateDebut" value="${editing?editing.dateDebut:todayIso}"></div>
+        <div><label>Date de fin</label><input type="date" id="dispDateFin" value="${editing?(editing.dateFin||''):''}"></div>
         <div><label>Type</label><select id="dispType">
-          <option value="totale">Totale</option>
-          <option value="partielle">Partielle</option>
-          <option value="natation">Natation</option>
+          <option value="totale" ${editing&&editing.type==='totale'?'selected':''}>Totale</option>
+          <option value="partielle" ${editing&&editing.type==='partielle'?'selected':''}>Partielle</option>
+          <option value="natation" ${editing&&editing.type==='natation'?'selected':''}>Natation</option>
         </select></div>
         <div style="display:flex;align-items:flex-end;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--ink);font-weight:400;"><input type="checkbox" id="dispAutorise" style="width:auto;"> Autorisé à ne pas assister au cours</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--ink);font-weight:400;"><input type="checkbox" id="dispAutorise" style="width:auto;" ${editing&&editing.autorise?'checked':''}> Autorisé à ne pas assister au cours</label>
         </div>
       </div>
       <p class="legend" style="margin:0 0 4px;">Si « Autorisé à ne pas assister au cours » est coché, l'élève sera automatiquement marqué <b>Disp</b> à chaque nouvel appel créé pendant la période de dispense.</p>
       <div class="modal-foot">
         <button class="btn ghost" onclick="closeModal()">Fermer</button>
-        <button class="btn" onclick="saveDispense()">Enregistrer la dispense</button>
+        ${editing?`<button class="btn ghost" onclick="cancelEditDispense()">Annuler la modification</button>`:''}
+        <button class="btn" onclick="saveDispense()">${editing?'Enregistrer les modifications':'Enregistrer la dispense'}</button>
       </div>
     </div>
   </div>`;
 }
+function editDispense(tabId, studentId, dispId){
+  if(!dispensePending) return;
+  dispensePending.editingDispenseId = dispId;
+  renderDispenseModal();
+}
+function cancelEditDispense(){
+  if(!dispensePending) return;
+  dispensePending.editingDispenseId = null;
+  renderDispenseModal();
+}
 function saveDispense(){
   if(!dispensePending) return;
-  const {tabId, studentId} = dispensePending;
+  const {tabId, studentId, editingDispenseId} = dispensePending;
   const tab = state.tabs[tabId];
   const s = tab && tab.students.find(x=>x.id===studentId);
   if(!s) return;
@@ -1492,7 +1573,12 @@ function saveDispense(){
   if(!dateDebut){ alert('La date de début est obligatoire.'); return; }
   if(dateFin && dateFin<dateDebut){ alert('La date de fin doit être postérieure à la date de début.'); return; }
   if(!s.dispenses) s.dispenses = [];
-  s.dispenses.push({id:uid(), dateDebut, dateFin, type, autorise});
+  if(editingDispenseId){
+    const d = s.dispenses.find(x=>x.id===editingDispenseId);
+    if(d){ Object.assign(d, {dateDebut, dateFin, type, autorise}); }
+  } else {
+    s.dispenses.push({id:uid(), dateDebut, dateFin, type, autorise});
+  }
   saveState();
   dispensePending = {tabId, studentId};
   renderDispenseModal();
@@ -1872,7 +1958,7 @@ function renderTheorie4(tab, act, activityLabel){
       <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
     </div>
     ${starter?`<div style="text-align:center;font-size:1.3rem;font-weight:800;color:#fff;background:linear-gradient(135deg,${catColor},${shadeColor(catColor,-24)});border-radius:12px;padding:12px;margin-bottom:10px;">➡️ ${escapeHtml(starter.nomPrenom)}</div>`:''}
-    <p class="legend" style="border-left-color:${catColor};">La case en surbrillance indique l'élève tiré·e au sort pour mener l'échauffement (seul·e noté·e). Le bouton "🎲 Tirer au sort" ci-dessus retire au sort pour la séance la plus récente. Cliquez dessus pour choisir TB, S, F ou I — seule la lettre compte : TB (0-1 erreur), S (2-3), F (4-5), I (6 ou +) sont des repères indicatifs.</p>
+    <p class="legend" style="border-left-color:${catColor};">TB (0-1 erreur), S (2-3), F (4-5), I (6 ou +)</p>
     <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
   data.seances.forEach((se,i)=>{
     html += `<th style="background:${colorForColCat(catColor,i)}">
@@ -1992,8 +2078,9 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
   let html = `<div style="background:${lightTint(catColor)};border-radius:16px;padding:4px;">
   <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${catColor},${shadeColor(catColor,-24)});">
     <div class="toolbar">
-      <h2 style="margin:0;flex:1;">${escapeHtml(title)}</h2>
-      ${isCustom?`<button class="btn secondary small" onclick="renameCustomEval('${tab.id}','${escapeAct(activityLabel)}','${key}')">✎ Renommer</button><button class="btn danger small" onclick="deleteCustomEval('${tab.id}','${escapeAct(activityLabel)}','${key}')">🗑 Supprimer l'onglet</button>`:''}
+      <h2 style="margin:0;flex:1;display:flex;align-items:center;gap:6px;">${escapeHtml(title)}
+        ${isCustom?`<button class="icon-btn edit" title="Renommer l'onglet" onclick="renameCustomEval('${tab.id}','${escapeAct(activityLabel)}','${key}')">✎</button><button class="icon-btn danger" title="Supprimer l'onglet" onclick="deleteCustomEval('${tab.id}','${escapeAct(activityLabel)}','${key}')">🗑</button>`:''}
+      </h2>
       <button class="btn small" onclick="addSimpleSeance('${tab.id}','${escapeAct(activityLabel)}','${key}')">+ Nouvelle évaluation</button>
     </div>
     <p class="legend" style="border-left-color:${catColor};${allowCriteriaEdit?'margin-bottom:4px;':''}">${legendHtml}</p>
