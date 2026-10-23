@@ -171,7 +171,7 @@ header.app-header h1{
 .btn.danger:hover{background:var(--i);color:#fff;}
 
 .table-scroll{
-  max-height:68vh;
+  max-height:80vh;
   overflow:auto;
   border:1px solid var(--border);
   border-radius:10px;
@@ -187,7 +187,7 @@ table.data{
   font-size:.82rem;
 }
 table.data th,table.data td{
-  padding:3px 7px;
+  padding:2px 7px;
   border-bottom:1px solid var(--border);
   border-right:1px solid var(--border);
   white-space:nowrap;
@@ -1826,7 +1826,7 @@ function renderTheorie6(tab, act, activityLabel){
       <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
     </div>
     <p class="legend" style="border-left-color:${catColor};">➡️ = élève tiré au sort pour commencer. Le bouton "🎲 Tirer au sort" ci-dessus retire au sort pour la séance la plus récente. + = juste · − = ne sait pas · ~ = pas tout juste, pour chaque élève. Note finale = cumul des erreurs (−) sur toutes les séances : 0-1 → TB, 2-3 → S, 4-5 → F, 6+ → I.</p>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="name" style="background:${catColor}">Élève</th>`;
+    <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
   data.seances.forEach((se,i)=>{
     html += `<th style="background:${colorForColCat(catColor,i)}">
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameTheorieSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
@@ -1835,8 +1835,8 @@ function renderTheorie6(tab, act, activityLabel){
     </th>`;
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th></tr></thead><tbody>`;
-  students.forEach(s=>{
-    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+  students.forEach((s,idx)=>{
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     data.seances.forEach(se=>{
       const presence = presenceForDate(act, se.date, s.id);
       if(presence && presence!=='P'){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
@@ -1867,7 +1867,7 @@ function renderTheorie4(tab, act, activityLabel){
       <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
     </div>
     <p class="legend" style="border-left-color:${catColor};">La case en surbrillance indique l'élève tiré·e au sort pour mener l'échauffement (seul·e noté·e). Le bouton "🎲 Tirer au sort" ci-dessus retire au sort pour la séance la plus récente. Cliquez dessus pour choisir TB, S, F ou I — seule la lettre compte : TB (0-1 erreur), S (2-3), F (4-5), I (6 ou +) sont des repères indicatifs.</p>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="name" style="background:${catColor}">Élève</th>`;
+    <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
   data.seances.forEach((se,i)=>{
     html += `<th style="background:${colorForColCat(catColor,i)}">
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameTheorieSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
@@ -1876,8 +1876,8 @@ function renderTheorie4(tab, act, activityLabel){
     </th>`;
   });
   html += `</tr></thead><tbody>`;
-  students.forEach(s=>{
-    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+  students.forEach((s,idx)=>{
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     data.seances.forEach(se=>{
       const isStarter = se.starterId===s.id;
       if(!isStarter){ html += `<td class="muted">—</td>`; return; }
@@ -1981,7 +1981,7 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
     </div>
     <p class="legend" style="border-left-color:${catColor};${allowCriteriaEdit?'margin-bottom:4px;':''}">${legendHtml}</p>
     ${allowCriteriaEdit?renderCriteriaChips(tab.id, activityLabel, key, evalObj.criteria):''}
-    <div class="table-scroll"><table class="data"><thead><tr><th class="name" style="background:${catColor}">Élève</th>`;
+    <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
   evalObj.seances.forEach((se,i)=>{
     html += `<th style="background:${colorForColCat(catColor,i)}">
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameSimpleSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
@@ -1990,8 +1990,8 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
     </th>`;
   });
   html += `</tr></thead><tbody>`;
-  students.forEach(s=>{
-    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+  students.forEach((s,idx)=>{
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     evalObj.seances.forEach(se=>{
       const presence = presenceForDate(act, se.date, s.id);
       if(presence && presence!=='P'){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
@@ -2099,11 +2099,11 @@ function renderRecap(tab, act, activityLabel){
   const recapColor = EVAL_CAT_COLOR.recap;
   let html = `<div style="background:${lightTint(recapColor)};border-radius:16px;padding:4px;">
   <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${recapColor},${shadeColor(recapColor,-24)});"><h2>Récapitulatif — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}</h2>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="name" style="background:${recapColor}">Élève</th>
+    <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${recapColor}">N°</th><th class="name" style="background:${recapColor}">Élève</th>
     ${cols.map(c=>`<th style="background:linear-gradient(135deg, ${c.color}, ${shadeColor(c.color,-16)})">${escapeHtml(c.label)}</th>`).join('')}
     </tr></thead><tbody>`;
-  students.forEach(s=>{
-    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+  students.forEach((s,idx)=>{
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     cols.forEach(c=>{
       const v = c.get(s);
       if(!v){ html += `<td>·</td>`; return; }
