@@ -203,8 +203,20 @@ table.data th{
   letter-spacing:.3px;
   z-index:3;
 }
-table.data td.name,table.data th.name{
+table.data td.num,table.data th.num{
   position:sticky;left:0;
+  z-index:4;
+  background:var(--card);
+  width:28px;min-width:28px;max-width:28px;
+  text-align:center;
+  font-weight:700;
+  color:var(--ink-soft);
+  font-size:.74rem;
+}
+table.data th.num{background:var(--primary-dark);color:#fff;z-index:5;}
+table.data tr:nth-child(even) td.num{background:#e8ebf5;}
+table.data td.name,table.data th.name{
+  position:sticky;left:28px;
   z-index:4;
   background:var(--card);
   text-align:left;
@@ -272,8 +284,9 @@ table.data tr:nth-child(even) td.name{background:#dde1f2;}
 .pill input{border:none;background:transparent;font-weight:600;width:100px;}
 
 .badge{display:inline-block;padding:2px 9px;border-radius:7px;font-size:.72rem;font-weight:800;box-shadow:0 1px 2px rgba(0,0,0,.08);}
-.th-del{display:block;margin:4px auto 0;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:5px;font-size:.62rem;padding:1px 6px;cursor:pointer;transition:.15s;}
-.th-del:hover{background:rgba(239,68,68,.9);border-color:#ef4444;}
+.th-del{position:absolute;top:3px;right:3px;width:17px;height:17px;line-height:15px;display:flex;align-items:center;justify-content:center;background:#ef4444;border:1px solid rgba(255,255,255,.6);color:#fff;border-radius:50%;font-size:.6rem;font-weight:800;padding:0;cursor:pointer;transition:.15s;}
+.th-del:hover{background:#b91c1c;}
+.col-count{font-size:.66rem;font-weight:800;background:rgba(255,255,255,.25);border-radius:5px;padding:1px 6px;margin-bottom:2px;display:inline-block;}
 
 
 .modal-overlay{
@@ -335,6 +348,9 @@ const PRESENCE_CYCLE = ['P','ABS','DP','DISP'];
 const PRESENCE_LABEL = {P:'P',ABS:'Abs',DP:'DP',DISP:'Disp'};
 const PRESENCE_TITLE = {P:'Présent',ABS:'Absent',DP:'Dispensé ponctuellement',DISP:'Dispensé'};
 const PRESENCE_COLOR = {P:{bg:'#dbeafe',fg:'#1e3a8a'},ABS:{bg:'#fecaca',fg:'#7f1d1d'},DP:{bg:'#fed7aa',fg:'#7c2d12'},DISP:{bg:'#e9d5ff',fg:'#581c87'}};
+
+const DISP_TYPE_LABEL = {totale:'Totale', partielle:'Partielle', natation:'Natation'};
+const DISP_TYPE_COLOR = {totale:{bg:'#e9d5ff',fg:'#581c87'}, partielle:{bg:'#fed7aa',fg:'#7c2d12'}, natation:{bg:'#bae6fd',fg:'#0c4a6e'}};
 
 const INCIDENTS = [
   {code:'T',label:'Oubli de tenue'},
@@ -433,7 +449,11 @@ function migrateState(){
       }
       if(!act.baremes) act.baremes = [];
     });
+    (tab.students||[]).forEach(s=>{ if(!s.dispenses) s.dispenses = []; });
   });
+}
+function activeDispenseOn(s, dateISO){
+  return (s.dispenses||[]).find(d=> d.autorise && d.dateDebut<=dateISO && (!d.dateFin || dateISO<=d.dateFin));
 }
 let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}};
 let importState = null;
@@ -785,7 +805,7 @@ function mergeStudents(existing, incoming){
       Object.assign(old, inc, {id: old.id, archived:false});
       result.push(old);
     } else {
-      result.push(Object.assign({id:uid(), archived:false}, inc));
+      result.push(Object.assign({id:uid(), archived:false, dispenses:[]}, inc));
     }
   });
   existing.forEach(s=>{
@@ -904,6 +924,14 @@ function exportClassExcel(tabId){
   students.forEach(s=> rosterRows.push([s.nomPrenom, ...tab.fields.map(f=>s[f.key]||'')]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rosterRows), safeSheetName('Élèves'));
 
+  const dispRows = [['Élève', 'Date début', 'Date fin', 'Type', 'Autorisé à ne pas assister', 'Photo jointe']];
+  students.forEach(s=>{
+    (s.dispenses||[]).slice().sort((a,b)=> a.dateDebut.localeCompare(b.dateDebut)).forEach(d=>{
+      dispRows.push([s.nomPrenom, fmtDateFR(d.dateDebut), d.dateFin?fmtDateFR(d.dateFin):'', DISP_TYPE_LABEL[d.type]||d.type, d.autorise?'Oui':'Non', d.photo?'Oui':'Non']);
+    });
+  });
+  if(dispRows.length>1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dispRows), safeSheetName('Dispenses'));
+
   (tab.activityOrder||[]).forEach(actName=>{
     const act = tab.activities[actName];
     const appelRows = [['Élève', ...act.appels.map(ap=>fmtDateFR(ap.date))]];
@@ -944,6 +972,17 @@ function exportClassPDF(tabId){
     html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>${tab.fields.map(f=>`<td>${escapeHtml(s[f.key]||'')}</td>`).join('')}</tr>`;
   });
   html += `</tbody></table>`;
+
+  const dispList = [];
+  students.forEach(s=> (s.dispenses||[]).forEach(d=> dispList.push({s,d})));
+  if(dispList.length){
+    dispList.sort((a,b)=> a.d.dateDebut.localeCompare(b.d.dateDebut));
+    html += `<h2>Dispenses</h2><table><thead><tr><th class="name">Élève</th><th>Période</th><th>Type</th><th>Autorisé à ne pas assister</th><th>Certificat</th></tr></thead><tbody>`;
+    dispList.forEach(({s,d})=>{
+      html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td><td>${fmtDateFR(d.dateDebut)} → ${d.dateFin?fmtDateFR(d.dateFin):'indéterminée'}</td><td>${escapeHtml(DISP_TYPE_LABEL[d.type]||d.type)}</td><td>${d.autorise?'Oui':'Non'}</td><td>${d.photo?`<img src="${d.photo}" style="width:70px;height:70px;object-fit:cover;">`:'—'}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
 
   (tab.activityOrder||[]).forEach(actName=>{
     const act = tab.activities[actName];
@@ -1075,14 +1114,22 @@ function renderEleves(tab){
     <div class="table-scroll"><table class="data"><thead><tr>
       <th class="name">Nom Prénom</th>
       ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)}">${escapeHtml(f.label)}</th>`).join('')}
+      <th style="background:${FIXED_HEADER_BG}">Dispense</th>
       <th style="background:${FIXED_HEADER_BG}">—</th>
     </tr></thead><tbody>`;
+  const todayIso = todayISO();
   students.forEach(s=>{
     html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     tab.fields.forEach(f=>{ html += `<td>${escapeHtml(s[f.key]||'')}</td>`; });
+    const disp = activeDispenseOn(s, todayIso);
+    const tc = disp ? (DISP_TYPE_COLOR[disp.type]||{bg:'#f1f5f9',fg:'#64748b'}) : null;
+    html += `<td>
+      ${disp?`<span class="badge" style="background:${tc.bg};color:${tc.fg}" title="Dispensé jusqu'au ${disp.dateFin?fmtDateFR(disp.dateFin):'(indéterminée)'}">${DISP_TYPE_LABEL[disp.type]||disp.type}</span>`:'<span class="muted">—</span>'}
+      <button class="btn secondary small" style="padding:2px 6px;" onclick="openDispenseModal('${tab.id}','${s.id}')">+ DISP</button>
+    </td>`;
     html += `<td><button class="btn secondary small" onclick="editStudent('${tab.id}','${s.id}')">✎</button> <button class="btn danger small" onclick="deleteStudent('${tab.id}','${s.id}')">🗑</button></td></tr>`;
   });
-  if(!students.length) html += `<tr><td colspan="${tab.fields.length+2}" class="empty">Aucun élève. Importez une liste ou ajoutez-en manuellement.</td></tr>`;
+  if(!students.length) html += `<tr><td colspan="${tab.fields.length+3}" class="empty">Aucun élève. Importez une liste ou ajoutez-en manuellement.</td></tr>`;
   html += `</tbody></table></div>`;
   if(archived.length){
     html += `<h3 style="margin-top:16px;">Élèves archivés / plus présents (${archived.length})</h3>
@@ -1139,7 +1186,7 @@ function addStudentManual(tabId){
   const tab = state.tabs[tabId];
   const nom = prompt('Nom de famille :'); if(!nom) return;
   const prenom = prompt('Prénom :')||'';
-  const s = {id:uid(), nom, prenom, nomPrenom:`${nom.toUpperCase()} ${toTitleCase(prenom)}`.trim(), archived:false};
+  const s = {id:uid(), nom, prenom, nomPrenom:`${nom.toUpperCase()} ${toTitleCase(prenom)}`.trim(), archived:false, dispenses:[]};
   tab.fields.forEach(f=> s[f.key]='');
   tab.students.push(s);
   saveState(); renderApp();
@@ -1182,6 +1229,103 @@ function saveEditStudent(tabId, studentId){
   renderApp();
 }
 
+/* ============================= DISPENSES (médical) ============================= */
+let dispensePending = null;
+function openDispenseModal(tabId, studentId){
+  dispensePending = {tabId, studentId, photo:null};
+  renderDispenseModal();
+}
+function renderDispenseModal(){
+  if(!dispensePending) return;
+  const {tabId, studentId} = dispensePending;
+  const tab = state.tabs[tabId];
+  const s = tab && tab.students.find(x=>x.id===studentId);
+  if(!s){ closeModal(); return; }
+  const todayIso = todayISO();
+  const list = (s.dispenses||[]).slice().sort((a,b)=> b.dateDebut.localeCompare(a.dateDebut));
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this) closeModal()">
+    <div class="modal-box" style="max-width:620px;">
+      <h2>Dispenses — ${escapeHtml(s.nomPrenom)}</h2>
+      ${list.length?`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+        ${list.map(d=>{
+          const active = d.autorise && d.dateDebut<=todayIso && (!d.dateFin || todayIso<=d.dateFin);
+          const tc = DISP_TYPE_COLOR[d.type] || {bg:'#f1f5f9',fg:'#64748b'};
+          return `<div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;padding:8px;${active?'box-shadow:0 0 0 2px #581c87;':''}">
+            ${d.photo?`<a href="${d.photo}" target="_blank" title="Voir le certificat"><img src="${d.photo}" style="width:48px;height:48px;object-fit:cover;border-radius:7px;border:1px solid var(--border);"></a>`:`<div style="width:48px;height:48px;border-radius:7px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:.6rem;text-align:center;">Pas de photo</div>`}
+            <div style="flex:1;">
+              <span class="badge" style="background:${tc.bg};color:${tc.fg}">${DISP_TYPE_LABEL[d.type]||d.type}</span>
+              ${active?'<span class="badge" style="background:#581c87;color:#fff;margin-left:4px;">En cours</span>':''}
+              <div style="font-size:.76rem;color:var(--ink-soft);margin-top:3px;">${fmtDateFR(d.dateDebut)} → ${d.dateFin?fmtDateFR(d.dateFin):'indéterminée'} · ${d.autorise?'Dispensé du cours (DISP auto à l’appel)':'Présence au cours requise'}</div>
+            </div>
+            <button class="btn danger small" onclick="deleteDispense('${tabId}','${studentId}','${d.id}')">🗑</button>
+          </div>`;
+        }).join('')}
+      </div>`:`<p class="muted">Aucune dispense enregistrée.</p>`}
+      <h3>Nouvelle dispense</h3>
+      <div class="formgrid">
+        <div><label>Date de début</label><input type="date" id="dispDateDebut" value="${todayIso}"></div>
+        <div><label>Date de fin</label><input type="date" id="dispDateFin" value=""></div>
+        <div><label>Type</label><select id="dispType">
+          <option value="totale">Totale</option>
+          <option value="partielle">Partielle</option>
+          <option value="natation">Natation</option>
+        </select></div>
+        <div style="display:flex;align-items:flex-end;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--ink);font-weight:400;"><input type="checkbox" id="dispAutorise" style="width:auto;"> Autorisé à ne pas assister au cours</label>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
+        <button class="btn secondary small" onclick="document.getElementById('dispPhotoFile').click()">📷 Photo du certificat</button>
+        <input type="file" id="dispPhotoFile" accept="image/*" capture="environment" style="display:none" onchange="handleDispensePhotoFile(event)">
+        ${dispensePending.photo?`<img src="${dispensePending.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">`:'<span class="muted" style="font-size:.76rem;">Aucune photo</span>'}
+      </div>
+      <p class="legend" style="margin:0 0 4px;">Si « Autorisé à ne pas assister au cours » est coché, l'élève sera automatiquement marqué <b>Disp</b> à chaque nouvel appel créé pendant la période de dispense.</p>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="closeModal()">Fermer</button>
+        <button class="btn" onclick="saveDispense()">Enregistrer la dispense</button>
+      </div>
+    </div>
+  </div>`;
+}
+function handleDispensePhotoFile(ev){
+  const file = ev.target.files[0];
+  ev.target.value = '';
+  if(!file || !dispensePending) return;
+  readAndCompressImage(file, 1400, .82).then(dataUrl=>{
+    dispensePending.photo = dataUrl;
+    renderDispenseModal();
+  }).catch(()=>{ alert("Impossible de lire cette image."); });
+}
+function saveDispense(){
+  if(!dispensePending) return;
+  const {tabId, studentId} = dispensePending;
+  const tab = state.tabs[tabId];
+  const s = tab && tab.students.find(x=>x.id===studentId);
+  if(!s) return;
+  const dateDebut = document.getElementById('dispDateDebut').value;
+  const dateFin = document.getElementById('dispDateFin').value;
+  const type = document.getElementById('dispType').value;
+  const autorise = document.getElementById('dispAutorise').checked;
+  if(!dateDebut){ alert('La date de début est obligatoire.'); return; }
+  if(dateFin && dateFin<dateDebut){ alert('La date de fin doit être postérieure à la date de début.'); return; }
+  if(!s.dispenses) s.dispenses = [];
+  s.dispenses.push({id:uid(), dateDebut, dateFin, type, autorise, photo:dispensePending.photo||null});
+  saveState();
+  dispensePending = {tabId, studentId, photo:null};
+  renderDispenseModal();
+  renderApp();
+}
+function deleteDispense(tabId, studentId, dispId){
+  if(!confirm('Supprimer définitivement cette dispense ?')) return;
+  const tab = state.tabs[tabId];
+  const s = tab && tab.students.find(x=>x.id===studentId);
+  if(!s) return;
+  s.dispenses = (s.dispenses||[]).filter(d=>d.id!==dispId);
+  saveState();
+  renderDispenseModal();
+  renderApp();
+}
+
 /* ============================= APPEL (generic, column-per-séance) ============================= */
 function renderAppel(tab, act, activityLabel){
   const students = sortedStudents(tab.students);
@@ -1190,14 +1334,14 @@ function renderAppel(tab, act, activityLabel){
       <h2 style="margin:0;flex:1;">Appel — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}</h2>
       <button class="btn small" onclick="addAppel('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvel appel</button>
     </div>
-    <p class="legend">Clic sur la présence : Présent → Absent (rouge) → Dispensé ponctuel (orange) → Dispensé (violet). Incidents : chaque code a sa propre nuance de rouge (T, M, Obs, Exc, RA du plus clair au plus vif), ⚠ en orange, R neutre.</p>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="name">Élève</th>`;
+    <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>`;
   act.appels.forEach((ap,i)=>{
-    html += `<th style="background:${colorForCol(i)}"><input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕ suppr.</button></th>`;
+    const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='P'?1:0), 0);
+    html += `<th style="background:${colorForCol(i)};position:relative;"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.</div><br><input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕</button></th>`;
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Récap</th></tr></thead><tbody>`;
-  students.forEach(s=>{
-    html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+  students.forEach((s,idx)=>{
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     act.appels.forEach(ap=>{
       const rec = ap.records[s.id] || {presence:'P', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
@@ -1242,9 +1386,10 @@ function renderAttendanceOverride(presence){
 function addAppel(tabId, activityLabel){
   const act = findActivity(tabId, activityLabel);
   const tab = state.tabs[tabId];
+  const date = todayISO();
   const records = {};
-  tab.students.forEach(s=>{ records[s.id] = {presence:'P', incidents:[]}; });
-  act.appels.push({id:uid(), date:todayISO(), records});
+  tab.students.forEach(s=>{ records[s.id] = {presence: activeDispenseOn(s, date) ? 'DISP' : 'P', incidents:[]}; });
+  act.appels.push({id:uid(), date, records});
   saveState(); renderApp();
 }
 function updateAppelDate(tabId, activityLabel, appelId, val){
@@ -1501,7 +1646,7 @@ function renderTheorie6(tab, act, activityLabel){
     html += `<th style="background:${colorForColCat(catColor,i)}">
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameTheorieSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
       <input type="date" value="${se.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateTheorieDate('${tab.id}','${escapeAct(activityLabel)}','${se.id}',this.value)">
-      <button class="th-del" title="Supprimer cette séance" onclick="deleteTheorieSeance('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">✕ suppr.</button>
+      <button class="th-del" title="Supprimer cette séance" onclick="deleteTheorieSeance('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">✕</button>
     </th>`;
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th></tr></thead><tbody>`;
@@ -1542,7 +1687,7 @@ function renderTheorie4(tab, act, activityLabel){
     html += `<th style="background:${colorForColCat(catColor,i)}">
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameTheorieSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
       <input type="date" value="${se.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateTheorieDate('${tab.id}','${escapeAct(activityLabel)}','${se.id}',this.value)">
-      <button class="th-del" title="Supprimer cette séance" onclick="deleteTheorieSeance('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">✕ suppr.</button>
+      <button class="th-del" title="Supprimer cette séance" onclick="deleteTheorieSeance('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">✕</button>
     </th>`;
   });
   html += `</tr></thead><tbody>`;
@@ -1656,7 +1801,7 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
     html += `<th style="background:${colorForColCat(catColor,i)}">
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameSimpleSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
       <input type="date" value="${se.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateSimpleDate('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}',this.value)">
-      <button class="th-del" title="Supprimer cette évaluation" onclick="deleteSimpleSeance('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}')">✕ suppr.</button>
+      <button class="th-del" title="Supprimer cette évaluation" onclick="deleteSimpleSeance('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}')">✕</button>
     </th>`;
   });
   html += `</tr></thead><tbody>`;
