@@ -427,7 +427,8 @@ const IMPORT_TYPES = {
   CLASSES:{label:'Classes (liste des élèves du collège)', fields:CLASS_FIELDS, perClasse:true, sheetTab:'Liste des élèves du collège'},
   AS_SP:{label:'AS Sport Partagé', fields:AS_FIELDS, perClasse:false, groupName:'AS Sport Partagé', sheetTab:'AS SP'},
   AS_FUTSAL:{label:'AS Futsal', fields:AS_FIELDS, perClasse:false, groupName:'AS Futsal', sheetTab:'AS Futsal'},
-  TKW:{label:'Taekwondo', fields:TKW_FIELDS, perClasse:false, groupName:'Taekwondo', sheetTab:'TKW'}
+  TKW:{label:'Taekwondo', fields:TKW_FIELDS, perClasse:false, groupName:'Taekwondo', sheetTab:'TKW'},
+  GROUPE_PERSO:{label:'Autre groupe (nom personnalisé)', fields:AS_FIELDS, perClasse:false, groupName:'', sheetTab:''}
 };
 const DEFAULT_SHEET_ID = '1-MtVqASlFvhcm9xaAksEO9vrEgc8wlrnXV8CcaQmlqg';
 
@@ -752,7 +753,7 @@ const FIELD_GUESSES = {
 /* ============================= IMPORT FLOW ============================= */
 function openImportModal(){
   importState = {step:1, type:'CLASSES', raw:'', headers:[], rows:[], mapping:{}, classeValues:[], selectedClasses:new Set(),
-    sheetId: DEFAULT_SHEET_ID, sheetTab: IMPORT_TYPES.CLASSES.sheetTab, sheetStatus:''};
+    sheetId: DEFAULT_SHEET_ID, sheetTab: IMPORT_TYPES.CLASSES.sheetTab, sheetStatus:'', groupName:''};
   renderImportModal();
 }
 function closeModal(){
@@ -775,6 +776,10 @@ function renderImportModal(){
             ${Object.entries(IMPORT_TYPES).map(([k,v])=>`<option value="${k}" ${k===st.type?'selected':''}>${escapeHtml(v.label)}</option>`).join('')}
           </select>
         </div>
+        ${!IMPORT_TYPES[st.type].perClasse ? `<div>
+          <label>Nom du groupe</label>
+          <input id="impGroupName" value="${escapeHtml(st.groupName!=null && st.groupName!=='' ? st.groupName : (IMPORT_TYPES[st.type].groupName||''))}" placeholder="Ex : Danse, Musculation...">
+        </div>` : ''}
       </div>
       <h3>Option A — Charger directement depuis Google Sheets (fichier accessible à tous)</h3>
       <div class="formgrid">
@@ -850,8 +855,11 @@ function renderImportModal(){
     document.getElementById('impType').onchange = e=>{
       st.raw = document.getElementById('impRaw').value;
       st.sheetId = document.getElementById('impSheetId').value;
+      const groupNameInput = document.getElementById('impGroupName');
+      if(groupNameInput) st.groupName = groupNameInput.value.trim();
       st.type = e.target.value;
       st.sheetTab = IMPORT_TYPES[st.type].sheetTab;
+      if(!IMPORT_TYPES[st.type].perClasse && !st.groupName) st.groupName = IMPORT_TYPES[st.type].groupName || '';
       renderImportModal();
     };
   }
@@ -938,6 +946,13 @@ function handleImportFile(ev){
 function importStep1Next(){
   const raw = document.getElementById('impRaw').value;
   if(!raw.trim()){ alert('Collez des données ou choisissez un fichier.'); return; }
+  const def0 = IMPORT_TYPES[importState.type];
+  if(!def0.perClasse){
+    const groupNameInput = document.getElementById('impGroupName');
+    const gName = groupNameInput ? groupNameInput.value.trim() : (def0.groupName||'');
+    if(!gName){ alert('Veuillez indiquer le nom du groupe.'); return; }
+    importState.groupName = gName;
+  }
   importState.raw = raw;
   const {headers, rows} = parseDelimited(raw);
   if(!rows.length){ alert('Aucune ligne de données détectée.'); return; }
@@ -1075,19 +1090,20 @@ function doImportClasses(){
 function doImportGroup(){
   const st = importState;
   const def = IMPORT_TYPES[st.type];
+  const groupName = (st.groupName && st.groupName.trim()) || def.groupName;
   const incoming = st.rows.map(r=>{
     const base = rowToStudentBase(r, st.mapping);
     const extra = {};
     def.fields.forEach(f=>{ extra[f.key] = st.mapping[f.key]!=null && st.mapping[f.key]>=0 ? (r[st.mapping[f.key]]||'').trim() : ''; });
     return Object.assign(base, extra);
   }).filter(s=>s.nom || s.prenom);
-  const id = 'groupe_'+normalize(def.groupName).replace(/\s+/g,'_');
-  const tab = ensureTab(id, def.groupName, 'groupe', null, def.fields);
+  const id = 'groupe_'+normalize(groupName).replace(/\s+/g,'_');
+  const tab = ensureTab(id, groupName, 'groupe', null, def.fields);
   const diff = diffStudents(tab.students, incoming);
   tab.students = mergeStudents(tab.students, incoming);
   saveState();
   importState.step = 4;
-  importState.importedTabs = [`${def.groupName} : ${diff.kept} inchangé(s), +${diff.added} nouveau(x), −${diff.removed} archivé(s)`];
+  importState.importedTabs = [`${groupName} : ${diff.kept} inchangé(s), +${diff.added} nouveau(x), −${diff.removed} archivé(s)`];
   renderImportModal();
   renderApp();
 }
