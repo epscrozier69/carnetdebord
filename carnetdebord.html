@@ -1350,7 +1350,7 @@ function renderEleves(tab){
     <div class="table-scroll"><table class="data"><thead><tr>
       <th class="num">N°</th>
       <th class="name">Nom Prénom</th>
-      ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)};${f.key==='projetAccompagnement'?'max-width:70px;white-space:normal;':''}">${escapeHtml(f.label)}${tab.kind!=='classe'?` <button class="icon-btn edit" style="width:18px;height:18px;font-size:.6rem;vertical-align:middle;" title="Renommer la colonne" onclick="renameField('${tab.id}','${f.key}')">✎</button><button class="icon-btn danger" style="width:18px;height:18px;font-size:.6rem;vertical-align:middle;" title="Supprimer la colonne" onclick="deleteField('${tab.id}','${f.key}')">🗑</button>`:''}</th>`).join('')}
+      ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)};${f.key==='projetAccompagnement'?'max-width:70px;white-space:normal;':''}">${escapeHtml(f.label)}</th>`).join('')}
       <th style="background:${FIXED_HEADER_BG}">Dispense</th>
       <th style="background:${FIXED_HEADER_BG}">—</th>
     </tr></thead><tbody>`;
@@ -1505,7 +1505,7 @@ function editStudent(tabId, studentId){
   const tab = state.tabs[tabId];
   const s = tab.students.find(x=>x.id===studentId);
   if(!s) return;
-  const fieldsHtml = tab.fields.map(f=>`<div><label>${escapeHtml(f.label)}</label><input id="editField_${f.key}" value="${escapeHtml(s[f.key]||'')}"></div>`).join('');
+  const fieldsHtml = tab.fields.map(f=>`<div><label${tab.kind!=='classe'?' style="display:flex;align-items:center;justify-content:space-between;gap:4px;"':''}>${escapeHtml(f.label)}${tab.kind!=='classe'?`<span style="display:inline-flex;gap:2px;"><button type="button" class="icon-btn edit" style="width:18px;height:18px;font-size:.6rem;" title="Renommer la colonne" onclick="renameField('${tabId}','${f.key}');editStudent('${tabId}','${studentId}')">✎</button><button type="button" class="icon-btn danger" style="width:18px;height:18px;font-size:.6rem;" title="Supprimer la colonne" onclick="deleteField('${tabId}','${f.key}');editStudent('${tabId}','${studentId}')">🗑</button></span>`:''}</label><input id="editField_${f.key}" value="${escapeHtml(s[f.key]||'')}"></div>`).join('');
   document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this) closeModal()">
     <div class="modal-box" style="max-width:540px;">
       <h2>Modifier l'élève</h2>
