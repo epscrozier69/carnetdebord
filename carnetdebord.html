@@ -1292,6 +1292,9 @@ function renderApp(){
   tab.activityOrder.forEach(actName=>{
     html += `<button class="${nav.section==='activity'&&nav.activity===actName?'active':''}" onclick="setNav({section:'activity',activity:'${escapeAct(actName)}',activityMode:'appel'})">${escapeHtml(actName)}</button>`;
   });
+  if(tab.kind!=='classe'){
+    html += `<button class="add" onclick="addActivity('${tab.id}')">+ Onglet</button>`;
+  }
   html += `</div>`;
 
   html += `<div id="section-content"></div>`;
@@ -1339,6 +1342,7 @@ function renderEleves(tab){
         <button class="icon-btn danger" title="Supprimer ${tab.kind==='classe'?'cette classe':'ce groupe'}" onclick="deleteTab('${tab.id}')">🗑</button>
       </h2>
       <button class="btn secondary small" onclick="addStudentManual('${tab.id}')">+ Ajouter un élève</button>
+      ${tab.kind!=='classe'?`<button class="btn secondary small" onclick="addField('${tab.id}')">+ Colonne</button>`:''}
       ${nameIssues.length?`<button class="btn danger small" onclick="openFixNamesModal('${tab.id}')">🩹 Corriger ${nameIssues.length} nom(s) dupliqué(s)</button>`:''}
       <button class="btn secondary small" onclick="exportClassExcel('${tab.id}')">📊 Exporter Excel</button>
       <button class="btn secondary small" onclick="exportClassPDF('${tab.id}')">🖨 Exporter PDF</button>
@@ -1346,7 +1350,7 @@ function renderEleves(tab){
     <div class="table-scroll"><table class="data"><thead><tr>
       <th class="num">N°</th>
       <th class="name">Nom Prénom</th>
-      ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)};${f.key==='projetAccompagnement'?'max-width:70px;white-space:normal;':''}">${escapeHtml(f.label)}</th>`).join('')}
+      ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)};${f.key==='projetAccompagnement'?'max-width:70px;white-space:normal;':''}">${escapeHtml(f.label)}${tab.kind!=='classe'?` <button class="icon-btn edit" style="width:18px;height:18px;font-size:.6rem;vertical-align:middle;" title="Renommer la colonne" onclick="renameField('${tab.id}','${f.key}')">✎</button><button class="icon-btn danger" style="width:18px;height:18px;font-size:.6rem;vertical-align:middle;" title="Supprimer la colonne" onclick="deleteField('${tab.id}','${f.key}')">🗑</button>`:''}</th>`).join('')}
       <th style="background:${FIXED_HEADER_BG}">Dispense</th>
       <th style="background:${FIXED_HEADER_BG}">—</th>
     </tr></thead><tbody>`;
@@ -1460,6 +1464,32 @@ function renameTab(tabId){
   const name = prompt('Nouveau nom :', tab.name);
   if(!name) return;
   tab.name = name;
+  saveState(); renderApp();
+}
+function addField(tabId){
+  const tab = state.tabs[tabId];
+  if(!tab) return;
+  const label = prompt('Nom de la nouvelle colonne :');
+  if(!label) return;
+  const key = 'custom_'+uid();
+  tab.fields.push({key, label});
+  tab.students.forEach(s=>{ if(s[key]==null) s[key]=''; });
+  saveState(); renderApp();
+}
+function renameField(tabId, key){
+  const tab = state.tabs[tabId];
+  const f = tab && tab.fields.find(x=>x.key===key);
+  if(!f) return;
+  const label = prompt('Nouveau nom de colonne :', f.label);
+  if(!label) return;
+  f.label = label;
+  saveState(); renderApp();
+}
+function deleteField(tabId, key){
+  const tab = state.tabs[tabId];
+  if(!tab) return;
+  if(!confirm('Supprimer définitivement cette colonne et toutes les données saisies dans cette colonne ? Cette action est irréversible.')) return;
+  tab.fields = tab.fields.filter(f=>f.key!==key);
   saveState(); renderApp();
 }
 function addStudentManual(tabId){
@@ -1616,7 +1646,9 @@ function renderAppel(tab, act, activityLabel){
   const students = sortedStudents(tab.students);
   let html = `<div class="card">
     <div class="toolbar">
-      <h2 style="margin:0;flex:1;">Appel — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}</h2>
+      <h2 style="margin:0;flex:1;display:flex;align-items:center;gap:6px;">Appel — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}
+        ${tab.kind!=='classe'?`<button class="icon-btn edit" title="Renommer l'onglet" onclick="renameActivity('${tab.id}','${escapeAct(activityLabel)}')">✎</button><button class="icon-btn danger" title="Supprimer l'onglet" onclick="deleteActivity('${tab.id}','${escapeAct(activityLabel)}')">🗑</button>`:''}
+      </h2>
       <button class="btn small" onclick="addAppel('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvel appel</button>
     </div>
     <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>`;
@@ -1658,6 +1690,39 @@ function renderAppel(tab, act, activityLabel){
 }
 function escapeAct(s){ return String(s).replace(/"/g,'&quot;').replace(/'/g,"\\'"); }
 function findActivity(tabId, activityLabel){ return state.tabs[tabId].activities[activityLabel]; }
+function addActivity(tabId){
+  const tab = state.tabs[tabId];
+  if(!tab) return;
+  const name = prompt("Nom du nouvel onglet :");
+  if(!name) return;
+  if(tab.activityOrder.includes(name)){ alert('Un onglet porte déjà ce nom.'); return; }
+  tab.activityOrder.push(name);
+  tab.activities[name] = {appels:[], evaluations:null, baremes:[]};
+  saveState();
+  setNav({section:'activity', activity:name, activityMode:'appel'});
+}
+function renameActivity(tabId, oldName){
+  const tab = state.tabs[tabId];
+  if(!tab) return;
+  const name = prompt('Nouveau nom :', oldName);
+  if(!name || name===oldName) return;
+  if(tab.activityOrder.includes(name)){ alert('Un onglet porte déjà ce nom.'); return; }
+  const idx = tab.activityOrder.indexOf(oldName);
+  if(idx>=0) tab.activityOrder[idx] = name;
+  tab.activities[name] = tab.activities[oldName];
+  delete tab.activities[oldName];
+  if(nav.tabId===tabId && nav.activity===oldName) nav.activity = name;
+  saveState(); renderApp();
+}
+function deleteActivity(tabId, name){
+  const tab = state.tabs[tabId];
+  if(!tab) return;
+  if(!confirm('Supprimer définitivement l\'onglet "'+name+'" et toutes ses données (appels, évaluations) ? Cette action est irréversible.')) return;
+  tab.activityOrder = tab.activityOrder.filter(a=>a!==name);
+  delete tab.activities[name];
+  if(nav.tabId===tabId && nav.activity===name){ nav.section='eleves'; nav.activity=null; }
+  saveState(); renderApp();
+}
 function presenceForDate(act, date, studentId){
   const ap = act.appels.find(a=>a.date===date);
   if(!ap) return null;
