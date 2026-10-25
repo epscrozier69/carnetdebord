@@ -2174,6 +2174,7 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
       <button class="th-del" title="Supprimer cette évaluation" onclick="deleteSimpleSeance('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}')">✕</button>
     </th>`;
   });
+  html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th>`;
   html += `</tr></thead><tbody>`;
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
@@ -2184,6 +2185,11 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
       const col = val ? LEVEL_COLOR[val] : {bg:'#f1f5f9',fg:'#64748b'};
       html += `<td><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleSimpleLevel('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">${val||'·'}</span></td>`;
     });
+    const auto = levelAverage(evalObj.seances.map(se=>se.marks[s.id]));
+    const override = (evalObj.finalOverride||{})[s.id] || '';
+    const finalVal = override || auto;
+    const fcol = finalVal ? LEVEL_COLOR[finalVal] : {bg:'#f1f5f9',fg:'#64748b'};
+    html += `<td style="border-left:2px solid ${catColor};"><span class="cell-click" style="background:${fcol.bg};color:${fcol.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.7;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique (moyenne) — cliquez pour la modifier manuellement"}" onclick="cycleFinalOverride('${tab.id}','${escapeAct(activityLabel)}','${key}','${s.id}')">${finalVal||'·'}</span></td>`;
     html += `</tr>`;
   });
   if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
@@ -2227,6 +2233,16 @@ function cycleSimpleLevel(tabId, activityLabel, key, seanceId, studentId){
   se.marks[studentId] = LEVEL_CYCLE[(idx+1)%LEVEL_CYCLE.length];
   saveState(); renderApp();
 }
+function cycleFinalOverride(tabId, activityLabel, key, studentId){
+  const act = findActivity(tabId, activityLabel);
+  const evalObj = findSimpleEval(act, key);
+  if(!evalObj.finalOverride) evalObj.finalOverride = {};
+  const cur = evalObj.finalOverride[studentId] || '';
+  const idx = LEVEL_CYCLE.indexOf(cur);
+  const next = LEVEL_CYCLE[(idx+1)%LEVEL_CYCLE.length];
+  if(next) evalObj.finalOverride[studentId] = next; else delete evalObj.finalOverride[studentId];
+  saveState(); renderApp();
+}
 function renderCriteriaChips(tabId, activityLabel, key, criteria){
   return `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0 10px;">
     ${criteria.map((c,i)=>`<span class="pill" style="padding:3px 6px 3px 10px;display:inline-flex;align-items:center;gap:6px;">${escapeHtml(c)}<button class="th-del" style="position:static;width:15px;height:15px;font-size:.55rem;flex-shrink:0;" title="Retirer ce critère" onclick="removeCriterion('${tabId}','${escapeAct(activityLabel)}','${key}',${i})">✕</button></span>`).join('')}
@@ -2255,6 +2271,11 @@ function levelAverage(values){
   const avg = Math.round(nums.reduce((a,b)=>a+b,0)/nums.length);
   return {4:'TB',3:'S',2:'F',1:'I'}[avg] || '';
 }
+function simpleFinalGrade(evalObj, studentId){
+  const override = (evalObj.finalOverride||{})[studentId];
+  if(override) return override;
+  return levelAverage(evalObj.seances.map(se=>se.marks[studentId]));
+}
 function recapColumns(tab, act){
   const ev = act.evaluations;
   const cols = [
@@ -2266,15 +2287,15 @@ function recapColumns(tab, act){
       const errs = ev.echauffementTheorie.seances.reduce((n,se)=> n + ((se.marks && se.marks[s.id]==='-')?1:0),0);
       return ev.echauffementTheorie.seances.length ? theorieNote(errs) : '';
     }},
-    {label:'Éch. pratique', color:shadeColor(EVAL_CAT_COLOR.echauffement,-20), get:(s)=> levelAverage(ev.echauffementPratique.seances.map(se=> se.marks[s.id]))},
-    {label:'Attitude', color:EVAL_CAT_COLOR.attitude, get:(s)=> levelAverage(ev.attitude.seances.map(se=> se.marks[s.id]))},
-    {label:'Implication', color:EVAL_CAT_COLOR.implication, get:(s)=> levelAverage(ev.implication.seances.map(se=> se.marks[s.id]))},
-    {label:'Capacités', color:EVAL_CAT_COLOR.capacites, get:(s)=> levelAverage(ev.capacites.seances.map(se=> se.marks[s.id]))},
-    {label:'Performance', color:EVAL_CAT_COLOR.performance, get:(s)=> levelAverage(ev.performance.seances.map(se=> se.marks[s.id]))},
-    {label:'Rôles sociaux', color:EVAL_CAT_COLOR.rolesSociaux, get:(s)=> levelAverage(ev.rolesSociaux.seances.map(se=> se.marks[s.id]))},
+    {label:'Éch. pratique', color:shadeColor(EVAL_CAT_COLOR.echauffement,-20), get:(s)=> simpleFinalGrade(ev.echauffementPratique, s.id)},
+    {label:'Attitude', color:EVAL_CAT_COLOR.attitude, get:(s)=> simpleFinalGrade(ev.attitude, s.id)},
+    {label:'Implication', color:EVAL_CAT_COLOR.implication, get:(s)=> simpleFinalGrade(ev.implication, s.id)},
+    {label:'Capacités', color:EVAL_CAT_COLOR.capacites, get:(s)=> simpleFinalGrade(ev.capacites, s.id)},
+    {label:'Performance', color:EVAL_CAT_COLOR.performance, get:(s)=> simpleFinalGrade(ev.performance, s.id)},
+    {label:'Rôles sociaux', color:EVAL_CAT_COLOR.rolesSociaux, get:(s)=> simpleFinalGrade(ev.rolesSociaux, s.id)},
   ];
   ev.custom.forEach((c,i)=>{
-    cols.push({label:c.title, color:CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length], get:(s)=> levelAverage(c.seances.map(se=> se.marks[s.id]))});
+    cols.push({label:c.title, color:CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length], get:(s)=> simpleFinalGrade(c, s.id)});
   });
   return cols;
 }
