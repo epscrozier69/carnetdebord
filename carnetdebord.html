@@ -2251,21 +2251,20 @@ function simpleFinalGrade(evalObj, studentId){
 }
 function recapColumns(tab, act){
   const ev = act.evaluations;
-  const cols = [];
-  if(tab.niveau==='6'){
-    cols.push({label:'Éch. théorie', color:EVAL_CAT_COLOR.echauffement, get:(s)=>{
-      const errs = ev.echauffementTheorie.seances.reduce((n,se)=> n + ((se.marks && se.marks[s.id]==='-')?1:0),0);
-      return ev.echauffementTheorie.seances.length ? theorieNote(errs) : '';
-    }});
-  }
-  cols.push(
+  const cols = [
     {label:'Capacités', color:EVAL_CAT_COLOR.capacites, get:(s)=> simpleFinalGrade(ev.capacites, s.id)},
     {label:'Performance', color:EVAL_CAT_COLOR.performance, get:(s)=> simpleFinalGrade(ev.performance, s.id)},
     {label:'Implication', color:EVAL_CAT_COLOR.implication, get:(s)=> simpleFinalGrade(ev.implication, s.id)},
     {label:'Attitude', color:EVAL_CAT_COLOR.attitude, get:(s)=> simpleFinalGrade(ev.attitude, s.id)},
     {label:'Rôles sociaux', color:EVAL_CAT_COLOR.rolesSociaux, get:(s)=> simpleFinalGrade(ev.rolesSociaux, s.id)},
     {label:'Éch. pratique', color:'#7c3aed', get:(s)=> simpleFinalGrade(ev.echauffementPratique, s.id)}
-  );
+  ];
+  if(tab.niveau==='6'){
+    cols.push({label:'Éch. théorie', color:EVAL_CAT_COLOR.echauffement, get:(s)=>{
+      const errs = ev.echauffementTheorie.seances.reduce((n,se)=> n + ((se.marks && se.marks[s.id]==='-')?1:0),0);
+      return ev.echauffementTheorie.seances.length ? theorieNote(errs) : '';
+    }});
+  }
   ev.custom.forEach((c,i)=>{
     cols.push({label:c.title, color:CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length], get:(s)=> simpleFinalGrade(c, s.id)});
   });
