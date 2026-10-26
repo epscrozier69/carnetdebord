@@ -1801,15 +1801,12 @@ function renderActivity(tab, act, activityLabel){
 }
 
 function renderActivityTheorie(tab, act, activityLabel){
-  if(!nav.activityMode) nav.activityMode='appel';
+  if(!nav.activityMode || nav.activityMode==='appel') nav.activityMode='theorie';
   let html = `<div class="tabbar sub3">
-    <button class="${nav.activityMode==='appel'?'active':''}" onclick="setNav({activityMode:'appel'})">📋 Appel</button>
     <button class="${nav.activityMode==='theorie'?'active':''}" onclick="setNav({activityMode:'theorie'})">📊 Théorie</button>
     <button class="${nav.activityMode==='bareme'?'active':''}" style="--cat:#ca8a04" onclick="setNav({activityMode:'bareme'})">📐 Barème</button>
   </div>`;
-  if(nav.activityMode==='appel'){
-    html += renderAppel(tab, act, activityLabel);
-  } else if(nav.activityMode==='bareme'){
+  if(nav.activityMode==='bareme'){
     html += renderBareme(tab, act, activityLabel);
   } else {
     html += renderTheorieTab(tab, act, activityLabel);
@@ -2037,56 +2034,23 @@ function renderTheorie6(tab, act, activityLabel){
   html += `</tbody></table></div></div></div>`;
   return html;
 }
-/* Onglet "Échauffement théorique" (toutes classes sauf 6ème) : un seul élève "meneur" (tiré au sort)
-   est noté par séance, sur ses erreurs pendant qu'il mène l'échauffement. */
+/* Onglet "Échauffement théorique" (toutes classes sauf 6ème) : le tirage au sort ne sert qu'à désigner
+   un élève (nom affiché 5 sec), il ne restreint pas la notation — n'importe quel élève peut être noté. */
 function renderTheorieTab(tab, act, activityLabel){
   const data = act.evaluations.echauffementTheorie;
-  const students = sortedStudents(tab.students);
   const catColor = EVAL_CAT_COLOR.echauffement;
-  const lastSeance = data.seances.length ? data.seances[data.seances.length-1] : null;
+  const legend = 'TB (0-1 erreur), S (2-3), F (4-5), I (6 ou +) — notez librement un ou plusieurs élèves par séance.';
   let starter = null;
   if(revealedStarter && revealedStarter.tabId===tab.id && revealedStarter.activityLabel===activityLabel && (Date.now()-revealedStarter.ts)<REVEAL_DURATION_MS){
     starter = tab.students.find(x=>x.id===revealedStarter.studentId);
   }
-  let html = `<div style="background:${lightTint(catColor)};border-radius:16px;padding:4px;">
-  <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${catColor},${shadeColor(catColor,-24)});">
-    <div class="toolbar">
-      <h2 style="margin:0;flex:1;">Échauffement théorique — ${escapeHtml(tab.name)}</h2>
-      ${data.seances.length?`<button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="redrawTheorie4('${tab.id}','${escapeAct(activityLabel)}','${lastSeance.id}')">🎲 Tirer au sort</button>`:''}
-      <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
-    </div>
-    ${starter?`<div style="text-align:center;font-size:1.3rem;font-weight:800;color:#fff;background:linear-gradient(135deg,${catColor},${shadeColor(catColor,-24)});border-radius:12px;padding:12px;margin-bottom:10px;">➡️ ${escapeHtml(starter.nomPrenom)}</div>`:''}
-    <p class="legend" style="border-left-color:${catColor};">TB (0-1 erreur), S (2-3), F (4-5), I (6 ou +)</p>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
-  data.seances.forEach((se,i)=>{
-    html += `<th style="background:${colorForColCat(catColor,i)}">
-      <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameTheorieSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
-      <input type="date" value="${se.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateTheorieDate('${tab.id}','${escapeAct(activityLabel)}','${se.id}',this.value)">
-      <button class="th-del" title="Supprimer cette séance" onclick="deleteTheorieSeance('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">✕</button>
-    </th>`;
-  });
-  html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th></tr></thead><tbody>`;
-  students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
-    data.seances.forEach(se=>{
-      const isStarter = se.starterId===s.id;
-      if(!isStarter){ html += `<td class="muted">—</td>`; return; }
-      const presence = presenceForDate(act, se.date, s.id);
-      if(presence && presence!=='P'){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
-      const grade = se.grade || '';
-      const col = grade ? LEVEL_COLOR[grade] : {bg:'#f1f5f9',fg:'#64748b'};
-      html += `<td style="background:${shadeColor(catColor,88)};">
-        <span class="cell-click" style="background:${col.bg};color:${col.fg};box-shadow:0 0 0 2px ${catColor};" title="Élève tiré·e au sort — cliquer pour noter" onclick="cycleTheorie4Grade('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${grade||'·'}</span>
-      </td>`;
-    });
-    const notes = data.seances.filter(se=>se.starterId===s.id && se.grade).map(se=>se.grade);
-    const note = levelAverage(notes);
-    const lc = note ? LEVEL_COLOR[note] : {bg:'#f1f5f9',fg:'#64748b'};
-    html += note ? `<td><span class="badge" style="background:${lc.bg};color:${lc.fg}">${note}</span></td>` : `<td>·</td>`;
-    html += `</tr>`;
-  });
-  if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
-  html += `</tbody></table></div></div></div>`;
+  let html = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+    <button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="drawTheorieVolunteer('${tab.id}','${escapeAct(activityLabel)}')">🎲 Tirer au sort</button>
+  </div>`;
+  if(starter){
+    html += `<div style="text-align:center;font-size:1.3rem;font-weight:800;color:#fff;background:linear-gradient(135deg,${catColor},${shadeColor(catColor,-24)});border-radius:12px;padding:12px;margin-bottom:10px;">➡️ ${escapeHtml(starter.nomPrenom)}</div>`;
+  }
+  html += renderSimpleEval(tab, act, activityLabel, 'echauffementTheorie', data, 'Échauffement théorique — '+tab.name, legend, catColor);
   return html;
 }
 function theorieNote(errs){
@@ -2112,16 +2076,13 @@ function revealStarter(tabId, activityLabel, studentId){
     if(revealedStarter && revealedStarter.ts===ts){ revealedStarter = null; renderApp(); }
   }, REVEAL_DURATION_MS);
 }
-function redrawTheorie4(tabId, activityLabel, seanceId){
-  const act = findActivity(tabId, activityLabel);
+function drawTheorieVolunteer(tabId, activityLabel){
   const tab = state.tabs[tabId];
   const students = sortedStudents(tab.students);
-  const se = act.evaluations.echauffementTheorie.seances.find(s=>s.id===seanceId);
-  if(!se || !students.length) return;
-  se.starterId = students[Math.floor(Math.random()*students.length)].id;
-  se.grade = '';
-  revealStarter(tabId, activityLabel, se.starterId);
-  saveState(); renderApp();
+  if(!students.length) return;
+  const pick = students[Math.floor(Math.random()*students.length)].id;
+  revealStarter(tabId, activityLabel, pick);
+  renderApp();
 }
 function redrawTheorie6(tabId, activityLabel, seanceId){
   const act = findActivity(tabId, activityLabel);
@@ -2131,15 +2092,6 @@ function redrawTheorie6(tabId, activityLabel, seanceId){
   if(!se || !students.length) return;
   se.starterId = students[Math.floor(Math.random()*students.length)].id;
   revealStarter(tabId, activityLabel, se.starterId);
-  saveState(); renderApp();
-}
-function cycleTheorie4Grade(tabId, activityLabel, seanceId, studentId){
-  const act = findActivity(tabId, activityLabel);
-  const se = act.evaluations.echauffementTheorie.seances.find(s=>s.id===seanceId);
-  if(se.starterId!==studentId) return;
-  const cur = se.grade || '';
-  const idx = LEVEL_CYCLE.indexOf(cur);
-  se.grade = LEVEL_CYCLE[(idx+1)%LEVEL_CYCLE.length];
   saveState(); renderApp();
 }
 function updateTheorieDate(tabId, activityLabel, seanceId, val){
