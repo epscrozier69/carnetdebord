@@ -751,6 +751,13 @@ function appelShowsClasseColumn(tab){
   if(n.includes('natation') && (n.includes('lundi') || n.includes('vendredi'))) return true;
   return false;
 }
+function isTaekwondoTab(tab){
+  return tab.kind!=='classe' && normalize(tab.name).includes('taekwondo');
+}
+function dateDayOfWeek(dateISO){
+  const [y,m,d] = dateISO.split('-').map(Number);
+  return new Date(y, m-1, d).getDay();
+}
 
 /* ============================= CSV PARSING ============================= */
 function detectDelim(line){
@@ -1767,10 +1774,13 @@ function renderAppel(tab, act, activityLabel){
       <button class="btn secondary small" title="Changer l'ordre des colonnes" onclick="setNav({appelDateOrder: nav.appelDateOrder==='desc'?'asc':'desc'})">${nav.appelDateOrder==='desc'?'⬇ Récent → ancien':'⬆ Ancien → récent'}</button>
     </div>
     <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>${showClasse?`<th style="background:${FIXED_HEADER_BG};cursor:pointer;" title="Cliquer pour changer le tri" onclick="setNav({appelClasseSort:!nav.appelClasseSort})">Classe ${nav.appelClasseSort?'🔽':'A→Z'}</th>`:''}`;
+  const taekwondoTab = isTaekwondoTab(tab);
   appelsSorted.forEach((ap,i)=>{
     const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='P'?1:0), 0);
     const dpCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='DP'?1:0), 0);
-    html += `<th style="background:${colorForCol(i)};position:relative;"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.${dpCount?' + '+dpCount+' DP':''}</div>
+    const isThursdayCol = taekwondoTab && dateDayOfWeek(ap.date)===4;
+    const colBg = isThursdayCol ? 'linear-gradient(135deg,#94a3b8,#64748b)' : colorForCol(i);
+    html += `<th style="background:${colBg};position:relative;" title="${isThursdayCol?'Séance du jeudi':''}"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.${dpCount?' + '+dpCount+' DP':''}</div>
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;margin:0 auto;" title="${escapeHtml(ap.title||'Cliquer pour ajouter un titre')}" onclick="renameAppelTitle('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">${ap.title?escapeHtml(ap.title):'+ titre'}</div>
       <input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕</button></th>`;
   });
@@ -1780,7 +1790,8 @@ function renderAppel(tab, act, activityLabel){
     appelsSorted.forEach(ap=>{
       const rec = ap.records[s.id] || {presence:'P', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
-      html += `<td>
+      const isThursdayCol = taekwondoTab && dateDayOfWeek(ap.date)===4;
+      html += `<td${isThursdayCol?' style="background:#e2e8f0;"':''}>
         <div class="appel-cell">
           <span class="cell-click" style="background:${col.bg};color:${col.fg}" title="${PRESENCE_TITLE[rec.presence]}" onclick="cyclePresence('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">${PRESENCE_LABEL[rec.presence]}</span>
           ${rec.incidents.map(code=>{
