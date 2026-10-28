@@ -307,8 +307,8 @@ body.starter-dragging .starter-drop-target{outline:2px dashed rgba(37,99,235,.5)
 .th-del{position:absolute;top:3px;right:3px;width:17px;height:17px;line-height:15px;display:flex;align-items:center;justify-content:center;background:#ef4444;border:1px solid rgba(255,255,255,.6);color:#fff;border-radius:50%;font-size:.6rem;font-weight:800;padding:0;cursor:pointer;transition:.15s;}
 .th-del:hover{background:#b91c1c;}
 .col-count{font-size:.66rem;font-weight:800;background:rgba(255,255,255,.25);border-radius:5px;padding:1px 6px;margin-bottom:2px;display:inline-block;}
-.add-mini{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:.8rem;font-weight:800;line-height:1;border:none;cursor:pointer;padding:0;vertical-align:middle;}
-.add-mini:hover{background:#312e81;}
+.add-mini{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:transparent;color:#cbd5e1;font-size:.8rem;font-weight:800;line-height:1;border:none;cursor:pointer;padding:0;vertical-align:middle;opacity:.7;transition:.12s;}
+.add-mini:hover{background:#eef2ff;color:var(--primary);opacity:1;}
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:.85rem;flex-shrink:0;transition:.15s;}
 .icon-btn:hover{transform:scale(1.08);}
 .icon-btn.edit{color:var(--primary);border-color:var(--primary-light);}
@@ -812,6 +812,12 @@ function toTitleCase(s){ return String(s||'').toLowerCase().split(/\s+/).map(w=>
 function todayISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
 function fmtDateFR(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return (d&&m&&y)?`${d}/${m}/${y}`:iso; }
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function sexeIcon(val){
+  const v = normalize(val||'');
+  if(v.startsWith('m')) return '<span style="color:#2563eb;font-weight:800;" title="Masculin">♂</span>';
+  if(v.startsWith('f')) return '<span style="color:#db2777;font-weight:800;" title="Féminin">♀</span>';
+  return escapeHtml(val||'');
+}
 function colorForCol(i){
   const c = COLUMN_PALETTE[i % COLUMN_PALETTE.length];
   return `linear-gradient(135deg, ${c}, ${shadeColor(c,-16)})`;
@@ -1586,7 +1592,7 @@ function renderEleves(tab){
   const todayIso = todayISO();
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
-    tab.fields.forEach(f=>{ html += `<td${f.key==='projetAccompagnement'?' style="max-width:70px;white-space:normal;"':''}>${escapeHtml(s[f.key]||'')}</td>`; });
+    tab.fields.forEach(f=>{ html += `<td${f.key==='projetAccompagnement'?' style="max-width:70px;white-space:normal;"':''}>${f.key==='sexe'?sexeIcon(s[f.key]):escapeHtml(s[f.key]||'')}</td>`; });
     const allDisp = s.dispenses||[];
     const match = activeDispenseAnywhere(s, tab.id, todayIso);
     const disp = match && match.disp;
