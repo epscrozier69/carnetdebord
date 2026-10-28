@@ -132,6 +132,10 @@ header.app-header h1{
 .tabbar.sub3 button:hover{border-color:var(--cat);color:var(--cat);}
 .tabbar.sub3 button.active{background:var(--cat);border-color:var(--cat);color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.25);}
 .niv-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px;box-shadow:0 0 0 2px rgba(255,255,255,.6);flex-shrink:0;}
+.niv-dot-input{-webkit-appearance:none;appearance:none;width:13px;height:13px;padding:0;border:none;border-radius:50%;margin-right:7px;cursor:pointer;box-shadow:0 0 0 2px rgba(255,255,255,.6);vertical-align:middle;flex-shrink:0;background:none;}
+.niv-dot-input::-webkit-color-swatch-wrapper{padding:0;border-radius:50%;}
+.niv-dot-input::-webkit-color-swatch{border:none;border-radius:50%;}
+.niv-dot-input::-moz-color-swatch{border:none;border-radius:50%;}
 
 .card{
   background:var(--card);
@@ -233,7 +237,6 @@ table.data td.name,table.data th.name{
 table.data th.name{background:var(--primary-dark);color:#fff;z-index:5;}
 table.data tr:nth-child(even) td{background:#e8ebf5;}
 table.data tr:nth-child(even) td.name{background:#dde1f2;}
-table.data td.num.row-highlight,table.data td.name.row-highlight{background:#fde68a!important;box-shadow:inset 0 0 0 2px #f59e0b;}
 table.data tbody tr:hover td.num,table.data tbody tr:hover td.name{background:#bae6fd!important;}
 
 .cell-click{cursor:pointer;border-radius:7px;padding:2px 7px;display:inline-block;min-width:26px;font-weight:800;box-shadow:0 1px 2px rgba(0,0,0,.1);transition:.12s;}
@@ -528,7 +531,6 @@ function dispenseAppliesToActivity(match, activityLabel){
   return true;
 }
 let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}, appelClasseSort:true, appelDateOrder:'asc'};
-let highlightRow = null;
 let importState = null;
 
 function defaultState(){ return {tabs:{}, order:[]}; }
@@ -1414,6 +1416,13 @@ function resetAll(){
 
 /* ============================= NAV HELPERS ============================= */
 function setNav(patch){ Object.assign(nav, patch); renderApp(); }
+function pickTabColor(e, tabId){
+  const tab = state.tabs[tabId];
+  if(!tab) return;
+  tab.color = e.target.value;
+  saveState();
+  renderApp();
+}
 function currentTab(){ return nav.tabId ? state.tabs[nav.tabId] : null; }
 
 /* ============================= DRAG & DROP REORDER (tabs & activities) ============================= */
@@ -1484,19 +1493,29 @@ function renderApp(){
   html += `<div class="tabbar">`;
   tabOrder.forEach(id=>{
     const t = state.tabs[id];
-    const dotColor = NIVEAU_COLOR[t.niveau] || GROUP_COLOR;
-    html += `<button class="${id===nav.tabId?'active':''}" data-drag-id="${escapeHtml(id)}" data-drag-kind="maintab" onpointerdown="dragPointerDown(event,'maintab','${id}')" onclick="if(!justDragged) setNav({tabId:'${id}',section:'eleves',activity:null})"><span class="niv-dot" style="background:${dotColor}"></span>${escapeHtml(t.name)}</button>`;
+    const dotColor = t.color || NIVEAU_COLOR[t.niveau] || GROUP_COLOR;
+    const isActive = id===nav.tabId;
+    const activeStyle = (isActive && t.color) ? `style="background:linear-gradient(135deg,${t.color},${shadeColor(t.color,-24)});border-color:${t.color};"` : '';
+    html += `<button class="${isActive?'active':''}" ${activeStyle} data-drag-id="${escapeHtml(id)}" data-drag-kind="maintab" onpointerdown="dragPointerDown(event,'maintab','${id}')" onclick="if(!justDragged) setNav({tabId:'${id}',section:'eleves',activity:null})"><input type="color" class="niv-dot-input" value="${dotColor}" title="Choisir la couleur de cet onglet" onclick="event.stopPropagation()" onpointerdown="event.stopPropagation()" onchange="pickTabColor(event,'${id}')">${escapeHtml(t.name)}</button>`;
   });
   html += `</div>`;
 
   const tab = state.tabs[nav.tabId];
+  const tabTone = tab.color || null;
   html += `<div class="tabbar sub2">`;
-  html += `<button class="${nav.section==='eleves'?'active':''}" onclick="setNav({section:'eleves'})">👥 Élèves</button>`;
+  const elevesActive = nav.section==='eleves';
+  const elevesStyle = (elevesActive && tabTone) ? `style="background:linear-gradient(135deg,${tabTone},${shadeColor(tabTone,-24)});border-color:${tabTone};color:#fff;"` : '';
+  html += `<button class="${elevesActive?'active':''}" ${elevesStyle} onclick="setNav({section:'eleves'})">👥 Élèves</button>`;
   tab.activityOrder.forEach(actName=>{
     const isConseilBtn = actName===CONSEIL_TAB_NAME;
     const active = nav.section==='activity'&&nav.activity===actName;
-    const conseilStyle = isConseilBtn ? `style="${active?'background:linear-gradient(135deg,#0f766e,#134e4a);border-color:#0f766e;color:#fff;':'background:#ccfbf1;border-color:#5eead4;color:#115e59;'}"` : '';
-    html += `<button class="${active?'active':''}" ${conseilStyle} data-drag-id="${escapeHtml(actName)}" data-drag-kind="activity" data-drag-scope="${escapeHtml(tab.id)}" onpointerdown="dragPointerDown(event,'activity','${escapeAct(actName)}','${tab.id}')" onclick="if(!justDragged) setNav({section:'activity',activity:'${escapeAct(actName)}',activityMode:'appel'})">${escapeHtml(actName)}</button>`;
+    let actStyle = '';
+    if(isConseilBtn){
+      actStyle = `style="${active?'background:linear-gradient(135deg,#0f766e,#134e4a);border-color:#0f766e;color:#fff;':'background:#ccfbf1;border-color:#5eead4;color:#115e59;'}"`;
+    } else if(active && tabTone){
+      actStyle = `style="background:linear-gradient(135deg,${tabTone},${shadeColor(tabTone,-24)});border-color:${tabTone};color:#fff;"`;
+    }
+    html += `<button class="${active?'active':''}" ${actStyle} data-drag-id="${escapeHtml(actName)}" data-drag-kind="activity" data-drag-scope="${escapeHtml(tab.id)}" onpointerdown="dragPointerDown(event,'activity','${escapeAct(actName)}','${tab.id}')" onclick="if(!justDragged) setNav({section:'activity',activity:'${escapeAct(actName)}',activityMode:'appel'})">${escapeHtml(actName)}</button>`;
   });
   if(tab.kind!=='classe'){
     html += `<button class="add" onclick="addActivity('${tab.id}')">+ Onglet</button>`;
@@ -1877,26 +1896,25 @@ function renderAppel(tab, act, activityLabel){
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Récap<br><span style="font-size:.65rem;font-weight:600;opacity:.85;">${appelsSorted.length} séance${appelsSorted.length>1?'s':''} faite${appelsSorted.length>1?'s':''}</span></th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    const hl = s.id===highlightRow ? ' row-highlight' : '';
-    html += `<tr><td class="num${hl}">${idx+1}</td><td class="name${hl}">${escapeHtml(s.nomPrenom)}</td>${showClasse?`<td>${escapeHtml(s.classe||'')}</td>`:''}`;
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>${showClasse?`<td>${escapeHtml(s.classe||'')}</td>`:''}`;
     appelsSorted.forEach(ap=>{
       const rec = ap.records[s.id] || {presence:'P', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
       const isThursdayCol = taekwondoTab && dateDayOfWeek(ap.date)===4;
       html += `<td${isThursdayCol?' style="background:#e2e8f0;"':''}>
         <div class="appel-cell">
-          <span class="cell-click" style="background:${col.bg};color:${col.fg}" title="${PRESENCE_TITLE[rec.presence]}" onclick="highlightRow='${s.id}';cyclePresence('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">${PRESENCE_LABEL[rec.presence]}</span>
+          <span class="cell-click" style="background:${col.bg};color:${col.fg}" title="${PRESENCE_TITLE[rec.presence]}" onclick="cyclePresence('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">${PRESENCE_LABEL[rec.presence]}</span>
           ${rec.incidents.map(code=>{
             const inc = INCIDENTS.find(i=>i.code===code);
             const bg = INCIDENT_COLOR[code]||'#334155';
             if(code==='P'){
               const title = rec.punitionDone ? 'Punition rendue — cliquer pour retirer' : 'Punition à rendre — cliquer quand rendue';
               const doneStyle = 'background:#e2e8f0;border-color:#94a3b8;color:#475569;text-decoration:line-through;text-decoration-thickness:2.5px;text-decoration-color:#dc2626;';
-              return `<button class="incbtn on" style="${rec.punitionDone?doneStyle:`background:${bg};border-color:${bg};`}" title="${title}" onclick="highlightRow='${s.id}';cyclePunition('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">P</button>`;
+              return `<button class="incbtn on" style="${rec.punitionDone?doneStyle:`background:${bg};border-color:${bg};`}" title="${title}" onclick="cyclePunition('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">P</button>`;
             }
-            return `<button class="incbtn on" style="background:${bg};border-color:${bg};" title="Retirer : ${escapeHtml(inc?inc.label:code)}" onclick="highlightRow='${s.id}';toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}','${code}')">${code}</button>`;
+            return `<button class="incbtn on" style="background:${bg};border-color:${bg};" title="Retirer : ${escapeHtml(inc?inc.label:code)}" onclick="toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}','${code}')">${code}</button>`;
           }).join('')}
-          <select class="inc-add" title="Ajouter un incident" onchange="if(this.value){ highlightRow='${s.id}';toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}', this.value); } this.value='';">
+          <select class="inc-add" title="Ajouter un incident" onchange="if(this.value){ toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}', this.value); } this.value='';">
             <option value="">+</option>
             ${INCIDENTS.filter(inc=>!rec.incidents.includes(inc.code)).map(inc=>`<option value="${inc.code}">${inc.code} — ${escapeHtml(inc.label)}</option>`).join('')}
           </select>
@@ -1937,8 +1955,7 @@ function renderConseil(tab, act, activityLabel){
   });
   html += `</tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    const hl = s.id===highlightRow ? ' row-highlight' : '';
-    html += `<tr><td class="num${hl}">${idx+1}</td><td class="name${hl}">${escapeHtml(s.nomPrenom)}</td>`;
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     periods.forEach(p=>{
       const entry = p.entries[s.id] || {mentions:[], comment:''};
       const chips = entry.mentions.map(code=>{
@@ -1946,7 +1963,7 @@ function renderConseil(tab, act, activityLabel){
         return `<span class="badge" style="background:${m?m.color:'#64748b'};color:#fff;margin:1px;">${code}</span>`;
       }).join('');
       const commentMark = entry.comment ? `<span title="${escapeHtml(entry.comment)}">💬</span>` : '';
-      html += `<td style="cursor:pointer;" onclick="highlightRow='${s.id}';openConseilEntry('${tab.id}','${escapeAct(activityLabel)}','${p.id}','${s.id}')">${chips||'<span style="color:#cbd5e1;">—</span>'}${commentMark}</td>`;
+      html += `<td style="cursor:pointer;" onclick="openConseilEntry('${tab.id}','${escapeAct(activityLabel)}','${p.id}','${s.id}')">${chips||'<span style="color:#cbd5e1;">—</span>'}${commentMark}</td>`;
     });
     html += `</tr>`;
   });
@@ -2389,8 +2406,7 @@ function renderTheorie6(tab, act, activityLabel){
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    const hl = s.id===highlightRow ? ' row-highlight' : '';
-    html += `<tr><td class="num${hl}">${idx+1}</td><td class="name${hl}">${escapeHtml(s.nomPrenom)}</td>`;
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     data.seances.forEach(se=>{
       const dropAttrs = ` class="starter-drop-target" data-student-id="${s.id}" data-seance-id="${se.id}"`;
       const presence = presenceForDate(act, se.date, s.id);
@@ -2398,14 +2414,14 @@ function renderTheorie6(tab, act, activityLabel){
       const isStarter = se.starterId===s.id;
       const mark = (se.marks && se.marks[s.id]) || '';
       const col = mark ? MARK_COLOR[mark] : {bg:'#f1f5f9',fg:'#64748b'};
-      html += `<td${dropAttrs}>${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="highlightRow='${s.id}';cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
+      html += `<td${dropAttrs}>${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
     });
     const errs = theorieErrorCount(data.seances, s.id);
     const auto = theorieNote(errs);
     const override = (data.finalOverride||{})[s.id] || '';
     const note = override || auto;
     const lc = LEVEL_COLOR[note];
-    html += `<td><span class="cell-click" style="background:${lc.bg};color:${lc.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.85;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique ("+errs+" erreur(s)) — cliquez pour la modifier manuellement"}" onclick="highlightRow='${s.id}';cycleTheorie6FinalOverride('${tab.id}','${escapeAct(activityLabel)}','${s.id}')">${note}</span></td></tr>`;
+    html += `<td><span class="cell-click" style="background:${lc.bg};color:${lc.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.85;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique ("+errs+" erreur(s)) — cliquez pour la modifier manuellement"}" onclick="cycleTheorie6FinalOverride('${tab.id}','${escapeAct(activityLabel)}','${s.id}')">${note}</span></td></tr>`;
   });
   if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
   html += `</tbody></table></div></div></div>`;
@@ -2569,20 +2585,19 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
   html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th>`;
   html += `</tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    const hl = s.id===highlightRow ? ' row-highlight' : '';
-    html += `<tr><td class="num${hl}">${idx+1}</td><td class="name${hl}">${escapeHtml(s.nomPrenom)}</td>`;
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     evalObj.seances.forEach(se=>{
       const presence = presenceForDate(act, se.date, s.id);
       if(presenceBlocksGrading(presence, key)){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
       const val = se.marks[s.id] || '';
       const col = val ? LEVEL_COLOR[val] : {bg:'#f1f5f9',fg:'#64748b'};
-      html += `<td><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="highlightRow='${s.id}';cycleSimpleLevel('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">${val||'·'}</span></td>`;
+      html += `<td><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleSimpleLevel('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">${val||'·'}</span></td>`;
     });
     const auto = levelAverage(evalObj.seances.map(se=>se.marks[s.id]));
     const override = (evalObj.finalOverride||{})[s.id] || '';
     const finalVal = override || auto;
     const fcol = finalVal ? LEVEL_COLOR[finalVal] : {bg:'#f1f5f9',fg:'#64748b'};
-    html += `<td style="border-left:2px solid ${catColor};"><span class="cell-click" style="background:${fcol.bg};color:${fcol.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.7;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique (moyenne) — cliquez pour la modifier manuellement"}" onclick="highlightRow='${s.id}';cycleFinalOverride('${tab.id}','${escapeAct(activityLabel)}','${key}','${s.id}')">${finalVal||'·'}</span></td>`;
+    html += `<td style="border-left:2px solid ${catColor};"><span class="cell-click" style="background:${fcol.bg};color:${fcol.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.7;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique (moyenne) — cliquez pour la modifier manuellement"}" onclick="cycleFinalOverride('${tab.id}','${escapeAct(activityLabel)}','${key}','${s.id}')">${finalVal||'·'}</span></td>`;
     html += `</tr>`;
   });
   if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
