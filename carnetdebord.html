@@ -475,8 +475,6 @@ const EVAL_CAT_COLOR = {
 const CUSTOM_EVAL_COLORS = ['#7c3aed','#db2777','#0891b2','#d97706','#c026d3','#4f46e5'];
 
 /* ============================= STATE ============================= */
-let state = loadState();
-migrateState();
 function migrateState(){
   Object.values(state.tabs).forEach(tab=>{
     Object.values(tab.activities||{}).forEach(act=>{
@@ -551,7 +549,17 @@ function saveStateLocalOnly(){
 /* ============================= SYNC (Google Apps Script) ============================= */
 const SYNC_CONFIG_KEY = 'cdb_sync_appscript_v1';
 let syncConfig = loadSyncConfig();
-let syncState = {lastSyncAt:null, lastError:null, busy:false, pushTimer:null};
+let syncState = {lastSyncAt:null, lastError:null, busy:false, pushTimer:null, canPush: !syncConfig, pushPending:false, conflict:null};
+let lastKnownRemoteSize = null;
+function roughDataSize(st){
+  let n = 0;
+  Object.values((st&&st.tabs)||{}).forEach(t=>{ n += (t.students||[]).filter(s=>!s.archived).length; });
+  return n;
+}
+
+/* ============================= STATE ============================= */
+let state = loadState();
+migrateState();
 
 function loadSyncConfig(){
   try{
@@ -567,7 +575,7 @@ function clearSyncConfig(){
   syncConfig = null;
   try{ localStorage.removeItem(SYNC_CONFIG_KEY); }catch(e){}
   if(syncState.pushTimer) clearTimeout(syncState.pushTimer);
-  syncState = {lastSyncAt:null, lastError:null, busy:false, pushTimer:null};
+  syncState = {lastSyncAt:null, lastError:null, busy:false, pushTimer:null, canPush:true, pushPending:false, conflict:null};
   updateSyncStatusUI();
 }
 function timeAgo(ts){
@@ -584,6 +592,7 @@ function updateSyncStatusUI(){
   if(!btn) return;
   btn.title = syncState.lastError || '';
   if(!syncConfig){ btn.textContent = '🔄 Synchro : non configurée'; return; }
+  if(syncState.conflict){ btn.textContent = '⚠ Synchro en pause — vérification nécessaire, cliquez ici'; return; }
   if(syncState.busy){ btn.textContent = '🔄 Synchro en cours…'; return; }
   if(syncState.lastError){ btn.textContent = '⚠ Erreur de synchro (survolez pour le détail)'; return; }
   btn.textContent = syncState.lastSyncAt ? ('✅ Synchro à jour — '+timeAgo(syncState.lastSyncAt)) : '🔄 Synchro configurée';
@@ -598,30 +607,52 @@ async function pullFromAppsScript(){
     const data = await res.json();
     if(data && data.error) throw new Error(data.error);
     if(data && data.updatedAt){
+      lastKnownRemoteSize = roughDataSize(data);
       const remoteUpdatedAt = data.updatedAt || 0;
       const localUpdatedAt = state.updatedAt || 0;
       if(remoteUpdatedAt > localUpdatedAt){
-        state = data;
-        saveStateLocalOnly();
-        renderApp();
+        const localSize = roughDataSize(state);
+        const remoteSize = lastKnownRemoteSize;
+        if(localSize>0 && remoteSize < localSize*0.5){
+          syncState.conflict = {kind:'pull', localSize, remoteSize, remoteData:data};
+          syncState.lastError = 'Les données reçues du cloud semblent très incomplètes ('+remoteSize+' élève(s) contre '+localSize+' actuellement sur cet appareil). La synchro a été mise en pause pour ne rien écraser — ouvrez "🔄 Synchro" pour décider.';
+        } else {
+          state = data;
+          saveStateLocalOnly();
+          renderApp();
+        }
       }
     }
-    syncState.lastError = null;
+    if(!syncState.conflict) syncState.lastError = null;
     syncState.lastSyncAt = Date.now();
   }catch(e){
     syncState.lastError = String(e.message||e);
     console.warn('Sync pull failed', e);
   }
   syncState.busy = false;
+  if(!syncState.canPush){
+    syncState.canPush = true;
+    if(syncState.pushPending){ syncState.pushPending = false; scheduleSyncPush(); }
+  }
   updateSyncStatusUI();
 }
 function scheduleSyncPush(){
   if(!syncConfig) return;
+  if(!syncState.canPush){ syncState.pushPending = true; return; }
   if(syncState.pushTimer) clearTimeout(syncState.pushTimer);
   syncState.pushTimer = setTimeout(()=>{ pushToAppsScript(); }, 2500);
 }
-async function pushToAppsScript(){
+async function pushToAppsScript(force){
   if(!syncConfig) return;
+  if(!force && lastKnownRemoteSize!=null){
+    const localSize = roughDataSize(state);
+    if(lastKnownRemoteSize>0 && localSize < lastKnownRemoteSize*0.5){
+      syncState.conflict = {kind:'push', localSize, remoteSize:lastKnownRemoteSize};
+      syncState.lastError = 'Les données de cet appareil semblent beaucoup plus petites ('+localSize+' élève(s)) que celles déjà connues sur le cloud ('+lastKnownRemoteSize+'). L\'envoi a été mis en pause pour ne rien écraser — ouvrez "🔄 Synchro" pour décider.';
+      updateSyncStatusUI();
+      return;
+    }
+  }
   syncState.busy = true; updateSyncStatusUI();
   try{
     const url = syncConfig.scriptUrl+'?key='+encodeURIComponent(syncConfig.key);
@@ -633,6 +664,7 @@ async function pushToAppsScript(){
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
     if(data && data.error) throw new Error(data.error);
+    lastKnownRemoteSize = roughDataSize(state);
     syncState.lastError = null;
     syncState.lastSyncAt = Date.now();
   }catch(e){
@@ -656,6 +688,18 @@ function openSyncModal(){
     <div class="modal-box" style="max-width:560px;">
       <h2>🔄 Synchronisation entre appareils</h2>
       <p class="legend">Les données sont stockées via un script Google Apps Script. Déploie le script une fois (voir instructions), puis configure l'URL et la clé secrète identiques sur chaque appareil (tablette et ordinateur). En cas de modification sur les deux appareils, la dernière sauvegarde enregistrée écrase les précédentes.</p>
+      ${syncState.conflict?.kind==='pull'?`<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:10px;margin-bottom:10px;">
+        <b>⚠ Synchro en pause</b><br>
+        Les données reçues du cloud ont beaucoup moins d'élèves (${syncState.conflict.remoteSize}) que celles de cet appareil (${syncState.conflict.localSize}). Pour éviter d'écraser des données par erreur, rien n'a été appliqué automatiquement.<br><br>
+        <button class="btn secondary small" onclick="resolveSyncConflict(false)">Garder mes données ici (recommandé) et les renvoyer au cloud</button><br><br>
+        <button class="btn danger small" onclick="resolveSyncConflict(true)">Remplacer quand même par les données reçues du cloud</button>
+      </div>`:''}
+      ${syncState.conflict?.kind==='push'?`<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:10px;margin-bottom:10px;">
+        <b>⚠ Synchro en pause</b><br>
+        Les données de cet appareil ont beaucoup moins d'élèves (${syncState.conflict.localSize}) que celles déjà connues sur le cloud (${syncState.conflict.remoteSize}). Rien n'a été envoyé pour éviter d'écraser des données par erreur.<br><br>
+        <button class="btn secondary small" onclick="resolveSyncConflict(false)">Récupérer les données du cloud ici (recommandé)</button><br><br>
+        <button class="btn danger small" onclick="resolveSyncConflict(true)">Envoyer quand même mes données vers le cloud</button>
+      </div>`:''}
       <div style="margin:8px 0;">
         <label style="font-size:.75rem;color:var(--ink-soft);display:block;margin-bottom:3px;">URL de l'application web Apps Script</label>
         <input id="syncScriptUrl" value="${escapeHtml(cfg.scriptUrl)}" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;" placeholder="https://script.google.com/macros/s/.../exec">
@@ -699,11 +743,34 @@ async function saveSyncFromModal(){
   const cfg = readSyncForm();
   if(!cfg.scriptUrl||!cfg.key){ alert("Renseigne l'URL du script et la clé secrète."); return; }
   saveSyncConfig(cfg);
-  syncState = {lastSyncAt:null, lastError:null, busy:false, pushTimer:null};
+  syncState = {lastSyncAt:null, lastError:null, busy:false, pushTimer:null, canPush:true, pushPending:false, conflict:null};
   closeModal();
   updateSyncStatusUI();
   await pullFromAppsScript();
-  await pushToAppsScript();
+  if(!syncState.conflict) await pushToAppsScript();
+}
+function resolveSyncConflict(apply){
+  const conflict = syncState.conflict;
+  if(!conflict) return;
+  syncState.conflict = null;
+  syncState.lastError = null;
+  closeModal();
+  if(conflict.kind==='pull'){
+    if(apply){
+      state = conflict.remoteData;
+      saveStateLocalOnly();
+      renderApp();
+      scheduleSyncPush();
+    } else {
+      pushToAppsScript(true);
+    }
+  } else {
+    if(apply){
+      pushToAppsScript(true);
+    } else {
+      pullFromAppsScript();
+    }
+  }
 }
 function disableSync(){
   if(!confirm('Désactiver la synchronisation sur cet appareil ? Les données resteront en local.')) return;
