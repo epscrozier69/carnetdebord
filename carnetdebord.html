@@ -2074,9 +2074,11 @@ function renderActivityTheorie(tab, act, activityLabel){
 
 function renderEvaluations(tab, act, activityLabel){
   const ev = act.evaluations;
-  if(!nav.evalCat) nav.evalCat = 'echauffement';
+  const hideEchauffement = tab.niveau==='6' && activityLabel==='Natation';
+  if(!nav.evalCat || (hideEchauffement && nav.evalCat==='echauffement')) nav.evalCat = hideEchauffement ? 'attitude' : 'echauffement';
   let tabsHtml = `<div class="tabbar sub3">`;
   EVAL_CATS.forEach(c=>{
+    if(c.key==='echauffement' && hideEchauffement) return;
     const label = (c.key==='echauffement' && tab.niveau!=='6') ? 'Échauffement pratique' : c.label;
     tabsHtml += `<button class="${nav.evalCat===c.key?'active':''}" style="--cat:${EVAL_CAT_COLOR[c.key]}" onclick="setNav({evalCat:'${c.key}'})">${escapeHtml(label)}</button>`;
   });
