@@ -522,6 +522,11 @@ function activeDispenseAnywhere(s, tabId, dateISO){
   }
   return null;
 }
+function dispenseAppliesToActivity(match, activityLabel){
+  if(!match) return false;
+  if(match.disp.type==='natation') return activityLabel==='Natation';
+  return true;
+}
 let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}, appelClasseSort:true, appelDateOrder:'asc'};
 let importState = null;
 
@@ -1983,7 +1988,10 @@ function addAppel(tabId, activityLabel){
   const tab = state.tabs[tabId];
   const date = todayISO();
   const records = {};
-  tab.students.forEach(s=>{ records[s.id] = {presence: activeDispenseAnywhere(s, tabId, date) ? 'DISP' : 'P', incidents:[]}; });
+  tab.students.forEach(s=>{
+    const match = activeDispenseAnywhere(s, tabId, date);
+    records[s.id] = {presence: dispenseAppliesToActivity(match, activityLabel) ? 'DISP' : 'P', incidents:[]};
+  });
   act.appels.push({id:uid(), date, title:'', records});
   saveState(); renderApp();
 }
