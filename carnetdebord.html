@@ -123,6 +123,7 @@ header.app-header h1{
   align-items:center;
 }
 .tabbar button:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);box-shadow:0 3px 9px rgba(67,56,202,.18);}
+.tabbar button[data-drag-id]{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}
 .tabbar button.active{background:linear-gradient(135deg,var(--primary),#6d28d9);border-color:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(67,56,202,.4);}
 .tabbar button.add{background:var(--primary-light);color:var(--primary);border-style:dashed;}
 .tabbar.sub2 button.active{background:linear-gradient(135deg,var(--accent),#0891b2);border-color:var(--accent);color:#04303a;box-shadow:0 3px 10px rgba(6,182,212,.4);}
@@ -252,6 +253,9 @@ table.data tr:nth-child(even) td.name{background:#dde1f2;}
   transition:.12s;
 }
 .incbtn.on:hover{filter:brightness(1.2);transform:scale(1.08);}
+.chip-toggle{border:2px solid var(--chip,#94a3b8);background:#fff;color:var(--chip,#475569);font-weight:800;font-size:.75rem;padding:5px 12px;border-radius:999px;cursor:pointer;transition:.12s;}
+.chip-toggle.on{background:var(--chip,#475569);color:#fff;}
+.chip-toggle:hover{transform:translateY(-1px);}
 .inc-add{
   width:18px;
   height:18px;
@@ -354,6 +358,15 @@ textarea.rawpaste{width:100%;min-height:140px;font-family:ui-monospace,Consolas,
 <script>
 /* ============================= CONFIG ============================= */
 const THEORIE_TAB_NAME = 'Échauffement théorique';
+const CONSEIL_TAB_NAME = 'Conseil de classe';
+const CONSEIL_MENTIONS = [
+  {code:'F', label:'Félicitations', color:'#16a34a'},
+  {code:'COMP', label:'Compliments', color:'#0d9488'},
+  {code:'ENC', label:'Encouragements', color:'#2563eb'},
+  {code:'AT', label:'Avertissement travail', color:'#f59e0b'},
+  {code:'AC', label:'Avertissement conduite', color:'#dc2626'},
+  {code:'AA', label:'Avertissement assiduité', color:'#7c3aed'}
+];
 const NIVEAU_ACTIVITIES = {
   '6': ['Natation','Rugby','Biathlon','Danse','Lutte'],
   '4': ['Tennis de table','Acrosport','Ultimate','Volley','Course de haies', THEORIE_TAB_NAME],
@@ -375,11 +388,12 @@ const INCIDENTS = [
   {code:'Obs',label:'Observation'},
   {code:'Exc',label:'Exclusion'},
   {code:'RA',label:"Rapport d'incident"},
-  {code:'R',label:'Retenue'}
+  {code:'R',label:'Retenue'},
+  {code:'Ret',label:'Retard'}
 ];
 const INCIDENT_COLOR = {
   'T':'#f87171', 'M':'#ef4444', '⚠':'#f97316', 'Obs':'#dc2626',
-  'Exc':'#991b1b', 'RA':'#ff1a1a', 'R':'#64748b'
+  'Exc':'#991b1b', 'RA':'#ff1a1a', 'R':'#64748b', 'Ret':'#eab308'
 };
 
 const LEVEL_CYCLE = ['','TB','S','F','I'];
@@ -473,6 +487,10 @@ function migrateState(){
     if(tab.kind==='classe' && tab.niveau && tab.niveau!=='6' && (NIVEAU_ACTIVITIES[tab.niveau]||[]).includes(THEORIE_TAB_NAME) && !tab.activityOrder.includes(THEORIE_TAB_NAME)){
       tab.activityOrder.push(THEORIE_TAB_NAME);
       tab.activities[THEORIE_TAB_NAME] = {appels:[], evaluations:{echauffementTheorie:{seances:[]}}, baremes:[], isTheorie:true};
+    }
+    if(tab.kind==='classe' && !tab.activityOrder.includes(CONSEIL_TAB_NAME)){
+      tab.activityOrder.unshift(CONSEIL_TAB_NAME);
+      tab.activities[CONSEIL_TAB_NAME] = {appels:[], evaluations:null, baremes:[], isConseil:true, conseil:{periods:[]}};
     }
   });
 }
@@ -1061,7 +1079,7 @@ function ensureTab(id, name, kind, niveau, fields){
     state.tabs[id] = {
       id, name, kind, niveau: niveau||null, fields,
       students: [],
-      activityOrder: kind==='classe' ? (NIVEAU_ACTIVITIES[niveau] || ['Suivi']) : ['Appel'],
+      activityOrder: kind==='classe' ? [CONSEIL_TAB_NAME, ...(NIVEAU_ACTIVITIES[niveau] || ['Suivi'])] : ['Appel'],
       activities: {}
     };
     state.order.push(id);
@@ -1070,11 +1088,14 @@ function ensureTab(id, name, kind, niveau, fields){
   tab.activityOrder.forEach(actName=>{
     if(!tab.activities[actName]){
       const isTheorieTab = actName===THEORIE_TAB_NAME;
+      const isConseilTab = actName===CONSEIL_TAB_NAME;
       tab.activities[actName] = {
         appels: [],
-        evaluations: isTheorieTab ? {echauffementTheorie:{seances:[]}} : (kind==='classe' ? makeEvaluations() : null),
+        evaluations: isTheorieTab ? {echauffementTheorie:{seances:[]}} : (isConseilTab ? null : (kind==='classe' ? makeEvaluations() : null)),
         baremes: [],
-        isTheorie: isTheorieTab
+        isTheorie: isTheorieTab,
+        isConseil: isConseilTab,
+        conseil: isConseilTab ? {periods:[]} : undefined
       };
     }
   });
@@ -1287,15 +1308,58 @@ function resetAll(){
 function setNav(patch){ Object.assign(nav, patch); renderApp(); }
 function currentTab(){ return nav.tabId ? state.tabs[nav.tabId] : null; }
 
+/* ============================= DRAG & DROP REORDER (tabs & activities) ============================= */
+let dragCtx = null;
+let justDragged = false;
+function dragPointerDown(e, kind, id, scopeId){
+  if(e.pointerType==='mouse' && e.button!==0) return;
+  dragCtx = {kind, id, scopeId: scopeId||'', startX:e.clientX, startY:e.clientY, moved:false};
+  document.addEventListener('pointermove', dragPointerMove);
+  document.addEventListener('pointerup', dragPointerUp, {once:true});
+}
+function dragPointerMove(e){
+  if(!dragCtx) return;
+  if(!dragCtx.moved && (Math.abs(e.clientX-dragCtx.startX)>6 || Math.abs(e.clientY-dragCtx.startY)>6)){
+    dragCtx.moved = true;
+  }
+  if(!dragCtx.moved) return;
+  e.preventDefault();
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const btn = el && el.closest('[data-drag-id]');
+  if(!btn || btn.dataset.dragKind!==dragCtx.kind || (btn.dataset.dragScope||'')!==dragCtx.scopeId) return;
+  const overId = btn.dataset.dragId;
+  if(overId===dragCtx.id) return;
+  const arr = dragCtx.kind==='maintab' ? state.order : state.tabs[dragCtx.scopeId].activityOrder;
+  const from = arr.indexOf(dragCtx.id), to = arr.indexOf(overId);
+  if(from<0 || to<0 || from===to) return;
+  arr.splice(from,1);
+  arr.splice(to,0,dragCtx.id);
+  renderApp();
+}
+function dragPointerUp(){
+  document.removeEventListener('pointermove', dragPointerMove);
+  if(dragCtx && dragCtx.moved){
+    saveState();
+    justDragged = true;
+    setTimeout(()=>{ justDragged=false; }, 30);
+  }
+  dragCtx = null;
+}
+
 /* ============================= RENDER ROOT ============================= */
 const NIVEAU_RANK = {'6':1,'5':2,'4':3,'3':4};
 function orderedTabIds(){
-  return [...state.order].sort((a,b)=>{
-    const ta = state.tabs[a], tb = state.tabs[b];
-    const ra = NIVEAU_RANK[ta.niveau] || 99, rb = NIVEAU_RANK[tb.niveau] || 99;
-    if(ra!==rb) return ra-rb;
-    return ta.name.localeCompare(tb.name, 'fr', {numeric:true});
-  });
+  if(!state.tabOrderSorted){
+    state.order.sort((a,b)=>{
+      const ta = state.tabs[a], tb = state.tabs[b];
+      const ra = NIVEAU_RANK[ta.niveau] || 99, rb = NIVEAU_RANK[tb.niveau] || 99;
+      if(ra!==rb) return ra-rb;
+      return ta.name.localeCompare(tb.name, 'fr', {numeric:true});
+    });
+    state.tabOrderSorted = true;
+    saveState();
+  }
+  return state.order;
 }
 function renderApp(){
   const app = document.getElementById('app');
@@ -1313,7 +1377,7 @@ function renderApp(){
   tabOrder.forEach(id=>{
     const t = state.tabs[id];
     const dotColor = NIVEAU_COLOR[t.niveau] || GROUP_COLOR;
-    html += `<button class="${id===nav.tabId?'active':''}" onclick="setNav({tabId:'${id}',section:'eleves',activity:null})"><span class="niv-dot" style="background:${dotColor}"></span>${escapeHtml(t.name)}</button>`;
+    html += `<button class="${id===nav.tabId?'active':''}" data-drag-id="${escapeHtml(id)}" data-drag-kind="maintab" onpointerdown="dragPointerDown(event,'maintab','${id}')" onclick="if(!justDragged) setNav({tabId:'${id}',section:'eleves',activity:null})"><span class="niv-dot" style="background:${dotColor}"></span>${escapeHtml(t.name)}</button>`;
   });
   html += `</div>`;
 
@@ -1321,7 +1385,10 @@ function renderApp(){
   html += `<div class="tabbar sub2">`;
   html += `<button class="${nav.section==='eleves'?'active':''}" onclick="setNav({section:'eleves'})">👥 Élèves</button>`;
   tab.activityOrder.forEach(actName=>{
-    html += `<button class="${nav.section==='activity'&&nav.activity===actName?'active':''}" onclick="setNav({section:'activity',activity:'${escapeAct(actName)}',activityMode:'appel'})">${escapeHtml(actName)}</button>`;
+    const isConseilBtn = actName===CONSEIL_TAB_NAME;
+    const active = nav.section==='activity'&&nav.activity===actName;
+    const conseilStyle = isConseilBtn ? `style="${active?'background:linear-gradient(135deg,#0f766e,#134e4a);border-color:#0f766e;color:#fff;':'background:#ccfbf1;border-color:#5eead4;color:#115e59;'}"` : '';
+    html += `<button class="${active?'active':''}" ${conseilStyle} data-drag-id="${escapeHtml(actName)}" data-drag-kind="activity" data-drag-scope="${escapeHtml(tab.id)}" onpointerdown="dragPointerDown(event,'activity','${escapeAct(actName)}','${tab.id}')" onclick="if(!justDragged) setNav({section:'activity',activity:'${escapeAct(actName)}',activityMode:'appel'})">${escapeHtml(actName)}</button>`;
   });
   if(tab.kind!=='classe'){
     html += `<button class="add" onclick="addActivity('${tab.id}')">+ Onglet</button>`;
@@ -1339,6 +1406,8 @@ function renderApp(){
     if(!act){ target.innerHTML = '<div class="empty">Activité introuvable.</div>'; return; }
     if(act.isTheorie){
       target.innerHTML = renderActivityTheorie(tab, act, nav.activity);
+    } else if(act.isConseil){
+      target.innerHTML = renderConseil(tab, act, nav.activity);
     } else if(act.evaluations===null){
       target.innerHTML = renderAppel(tab, act, nav.activity);
     } else {
@@ -1688,7 +1757,8 @@ function renderAppel(tab, act, activityLabel){
     <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>${showClasse?`<th style="background:${FIXED_HEADER_BG};cursor:pointer;" title="Cliquer pour changer le tri" onclick="setNav({appelClasseSort:!nav.appelClasseSort})">Classe ${nav.appelClasseSort?'🔽':'A→Z'}</th>`:''}`;
   act.appels.forEach((ap,i)=>{
     const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='P'?1:0), 0);
-    html += `<th style="background:${colorForCol(i)};position:relative;"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.</div><br><input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕</button></th>`;
+    const dpCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='DP'?1:0), 0);
+    html += `<th style="background:${colorForCol(i)};position:relative;"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.${dpCount?' + '+dpCount+' DP':''}</div><br><input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕</button></th>`;
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Récap</th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
@@ -1722,6 +1792,126 @@ function renderAppel(tab, act, activityLabel){
 }
 function escapeAct(s){ return String(s).replace(/"/g,'&quot;').replace(/'/g,"\\'"); }
 function findActivity(tabId, activityLabel){ return state.tabs[tabId].activities[activityLabel]; }
+
+/* ============================= CONSEIL DE CLASSE ============================= */
+function renderConseil(tab, act, activityLabel){
+  const students = sortedStudents(tab.students);
+  const periods = act.conseil.periods;
+  let html = `<div class="card">
+    <div class="toolbar">
+      <h2 style="margin:0;flex:1;">📋 Conseil de classe — ${escapeHtml(tab.name)}</h2>
+      <button class="btn small" onclick="addConseilPeriod('${tab.id}','${escapeAct(activityLabel)}')">+ Période</button>
+    </div>
+    <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>`;
+  periods.forEach((p,i)=>{
+    html += `<th style="background:${colorForCol(i)};position:relative;">${escapeHtml(p.title)}
+      <button class="th-del" style="right:22px;background:#2563eb;" title="Renommer cette période" onclick="renameConseilPeriod('${tab.id}','${escapeAct(activityLabel)}','${p.id}')">✎</button>
+      <button class="th-del" title="Supprimer cette période" onclick="deleteConseilPeriod('${tab.id}','${escapeAct(activityLabel)}','${p.id}')">✕</button>
+    </th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  students.forEach((s,idx)=>{
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    periods.forEach(p=>{
+      const entry = p.entries[s.id] || {mentions:[], comment:''};
+      const chips = entry.mentions.map(code=>{
+        const m = CONSEIL_MENTIONS.find(x=>x.code===code);
+        return `<span class="badge" style="background:${m?m.color:'#64748b'};color:#fff;margin:1px;">${code}</span>`;
+      }).join('');
+      const commentMark = entry.comment ? `<span title="${escapeHtml(entry.comment)}">💬</span>` : '';
+      html += `<td style="cursor:pointer;" onclick="openConseilEntry('${tab.id}','${escapeAct(activityLabel)}','${p.id}','${s.id}')">${chips||'<span style="color:#cbd5e1;">—</span>'}${commentMark}</td>`;
+    });
+    html += `</tr>`;
+  });
+  if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève dans cette liste.</td></tr>`;
+  if(!periods.length) html += `<tr><td class="empty" colspan="99">Aucune période. Cliquez sur "+ Période" pour en créer une.</td></tr>`;
+  html += `</tbody></table></div></div>`;
+  return html;
+}
+function conseilPeriod(act, periodId){ return act.conseil.periods.find(p=>p.id===periodId); }
+function conseilEntry(period, studentId){
+  if(!period.entries[studentId]) period.entries[studentId] = {mentions:[], comment:''};
+  return period.entries[studentId];
+}
+function addConseilPeriod(tabId, activityLabel){
+  const title = prompt('Titre de la période (ex : Conseil Trimestre 1) :');
+  if(!title) return;
+  const act = findActivity(tabId, activityLabel);
+  act.conseil.periods.push({id:uid(), title, entries:{}});
+  saveState(); renderApp();
+}
+function renameConseilPeriod(tabId, activityLabel, periodId){
+  const act = findActivity(tabId, activityLabel);
+  const period = conseilPeriod(act, periodId);
+  if(!period) return;
+  const title = prompt('Nouveau titre :', period.title);
+  if(!title) return;
+  period.title = title;
+  saveState(); renderApp();
+}
+function deleteConseilPeriod(tabId, activityLabel, periodId){
+  if(!confirm('Supprimer définitivement cette période et toutes ses données ?')) return;
+  const act = findActivity(tabId, activityLabel);
+  act.conseil.periods = act.conseil.periods.filter(p=>p.id!==periodId);
+  saveState(); renderApp();
+}
+let conseilPending = null;
+function openConseilEntry(tabId, activityLabel, periodId, studentId){
+  conseilPending = {tabId, activityLabel, periodId, studentId};
+  renderConseilEntryModal();
+}
+function renderConseilEntryModal(){
+  if(!conseilPending) return;
+  const {tabId, activityLabel, periodId, studentId} = conseilPending;
+  const tab = state.tabs[tabId];
+  const act = tab && findActivity(tabId, activityLabel);
+  const period = act && conseilPeriod(act, periodId);
+  const s = tab && tab.students.find(x=>x.id===studentId);
+  if(!tab || !act || !period || !s){ conseilPending=null; closeModal(); return; }
+  const entry = conseilEntry(period, studentId);
+  const mentionsHtml = CONSEIL_MENTIONS.map(m=>{
+    const on = entry.mentions.includes(m.code);
+    return `<button type="button" class="chip-toggle ${on?'on':''}" style="--chip:${m.color}" title="${escapeHtml(m.label)}" onclick="toggleConseilMentionPending('${m.code}')">${m.code}</button>`;
+  }).join('');
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this) closeConseilModal()">
+    <div class="modal-box" style="max-width:480px;">
+      <h2>${escapeHtml(period.title)} — ${escapeHtml(s.nomPrenom)}</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;">${mentionsHtml}</div>
+      <label>Commentaire</label>
+      <textarea id="conseilComment" rows="4" style="width:100%;resize:vertical;">${escapeHtml(entry.comment||'')}</textarea>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeConseilModal()">Fermer</button>
+      </div>
+    </div>
+  </div>`;
+}
+function toggleConseilMentionPending(code){
+  if(!conseilPending) return;
+  const {tabId, activityLabel, periodId, studentId} = conseilPending;
+  const act = findActivity(tabId, activityLabel);
+  const period = conseilPeriod(act, periodId);
+  const entry = conseilEntry(period, studentId);
+  const i = entry.mentions.indexOf(code);
+  if(i>=0) entry.mentions.splice(i,1); else entry.mentions.push(code);
+  saveState();
+  renderConseilEntryModal();
+}
+function closeConseilModal(){
+  if(conseilPending){
+    const {tabId, activityLabel, periodId, studentId} = conseilPending;
+    const act = findActivity(tabId, activityLabel);
+    const period = act && conseilPeriod(act, periodId);
+    if(period){
+      const entry = conseilEntry(period, studentId);
+      const ta = document.getElementById('conseilComment');
+      if(ta) entry.comment = ta.value;
+      saveState();
+    }
+  }
+  conseilPending = null;
+  closeModal();
+  renderApp();
+}
 function addActivity(tabId){
   const tab = state.tabs[tabId];
   if(!tab) return;
