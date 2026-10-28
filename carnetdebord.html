@@ -517,7 +517,7 @@ function activeDispenseAnywhere(s, tabId, dateISO){
   }
   return null;
 }
-let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}, appelClasseSort:true};
+let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}, appelClasseSort:true, appelDateOrder:'asc'};
 let importState = null;
 
 function defaultState(){ return {tabs:{}, order:[]}; }
@@ -1747,15 +1747,17 @@ function deleteDispense(tabId, studentId, dispId){
 function renderAppel(tab, act, activityLabel){
   const showClasse = appelShowsClasseColumn(tab);
   const students = (showClasse && nav.appelClasseSort) ? sortedStudentsByClasse(tab.students) : sortedStudents(tab.students);
+  const appelsSorted = [...act.appels].sort((a,b)=> nav.appelDateOrder==='desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
   let html = `<div class="card">
     <div class="toolbar">
       <h2 style="margin:0;flex:1;display:flex;align-items:center;gap:6px;">Appel — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}
         ${tab.kind!=='classe'?`<button class="icon-btn edit" title="Renommer l'onglet" onclick="renameActivity('${tab.id}','${escapeAct(activityLabel)}')">✎</button><button class="icon-btn danger" title="Supprimer l'onglet" onclick="deleteActivity('${tab.id}','${escapeAct(activityLabel)}')">🗑</button>`:''}
       </h2>
+      <button class="btn secondary small" title="Changer l'ordre des colonnes" onclick="setNav({appelDateOrder: nav.appelDateOrder==='desc'?'asc':'desc'})">${nav.appelDateOrder==='desc'?'⬇ Récent → ancien':'⬆ Ancien → récent'}</button>
       <button class="btn small" onclick="addAppel('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvel appel</button>
     </div>
     <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>${showClasse?`<th style="background:${FIXED_HEADER_BG};cursor:pointer;" title="Cliquer pour changer le tri" onclick="setNav({appelClasseSort:!nav.appelClasseSort})">Classe ${nav.appelClasseSort?'🔽':'A→Z'}</th>`:''}`;
-  act.appels.forEach((ap,i)=>{
+  appelsSorted.forEach((ap,i)=>{
     const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='P'?1:0), 0);
     const dpCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='DP'?1:0), 0);
     html += `<th style="background:${colorForCol(i)};position:relative;"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.${dpCount?' + '+dpCount+' DP':''}</div><br><input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕</button></th>`;
@@ -1763,7 +1765,7 @@ function renderAppel(tab, act, activityLabel){
   html += `<th style="background:${FIXED_HEADER_BG}">Récap</th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>${showClasse?`<td>${escapeHtml(s.classe||'')}</td>`:''}`;
-    act.appels.forEach(ap=>{
+    appelsSorted.forEach(ap=>{
       const rec = ap.records[s.id] || {presence:'P', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
       html += `<td>
