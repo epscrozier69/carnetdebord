@@ -245,7 +245,13 @@ table.data tr:nth-child(even) td.name{background:#dde1f2;}
   border-radius:4px;
   line-height:1.3;
 }
-.incbtn.on{background:#334155;color:#fff;border-color:#334155;}
+.incbtn.on{
+  background:#334155;color:#fff;border-color:#334155;
+  font-weight:800;
+  cursor:pointer;
+  transition:.12s;
+}
+.incbtn.on:hover{filter:brightness(1.2);transform:scale(1.08);}
 .inc-add{
   width:24px;
   height:24px;
@@ -354,7 +360,7 @@ const NIVEAU_ACTIVITIES = {
 const PRESENCE_CYCLE = ['P','ABS','DP','DISP','SLASH','EXCETA'];
 const PRESENCE_LABEL = {P:'P',ABS:'Abs',DP:'DP',DISP:'Disp',SLASH:'/',EXCETA:'Exc Éta'};
 const PRESENCE_TITLE = {P:'Présent',ABS:'Absent',DP:'Dispensé ponctuellement',DISP:'Dispensé',SLASH:'Non concerné',EXCETA:'Exclu de l\'établissement'};
-const PRESENCE_COLOR = {P:{bg:'#dbeafe',fg:'#1e3a8a'},ABS:{bg:'#fecaca',fg:'#7f1d1d'},DP:{bg:'#fed7aa',fg:'#7c2d12'},DISP:{bg:'#e9d5ff',fg:'#581c87'},SLASH:{bg:'#e2e8f0',fg:'#475569'},EXCETA:{bg:'#881337',fg:'#fff'}};
+const PRESENCE_COLOR = {P:{bg:'#dbeafe',fg:'#1e3a8a'},ABS:{bg:'#fecaca',fg:'#7f1d1d'},DP:{bg:'#fed7aa',fg:'#7c2d12'},DISP:{bg:'#e9d5ff',fg:'#581c87'},SLASH:{bg:'#64748b',fg:'#fff'},EXCETA:{bg:'#881337',fg:'#fff'}};
 
 const DISP_TYPE_LABEL = {totale:'Totale', partielle:'Partielle', natation:'Natation'};
 const DISP_TYPE_COLOR = {totale:{bg:'#e9d5ff',fg:'#581c87'}, partielle:{bg:'#fed7aa',fg:'#7c2d12'}, natation:{bg:'#bae6fd',fg:'#0c4a6e'}};
@@ -1690,7 +1696,7 @@ function renderAppel(tab, act, activityLabel){
       html += `<td>
         <div class="appel-cell">
           <span class="cell-click" style="background:${col.bg};color:${col.fg}" title="${PRESENCE_TITLE[rec.presence]}" onclick="cyclePresence('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">${PRESENCE_LABEL[rec.presence]}</span>
-          ${rec.incidents.map(code=>{ const inc = INCIDENTS.find(i=>i.code===code); const bg = INCIDENT_COLOR[code]||'#334155'; return `<button class="incbtn on" style="background:${bg};border-color:${bg};" title="Retirer : ${escapeHtml(inc?inc.label:code)}" onclick="toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}','${code}')">${code} ✕</button>`; }).join('')}
+          ${rec.incidents.map(code=>{ const inc = INCIDENTS.find(i=>i.code===code); const bg = INCIDENT_COLOR[code]||'#334155'; return `<button class="incbtn on" style="background:${bg};border-color:${bg};" title="Retirer : ${escapeHtml(inc?inc.label:code)}" onclick="toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}','${code}')">${code}</button>`; }).join('')}
           <select class="inc-add" title="Ajouter un incident" onchange="if(this.value){ toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}', this.value); } this.value='';">
             <option value="">+</option>
             ${INCIDENTS.filter(inc=>!rec.incidents.includes(inc.code)).map(inc=>`<option value="${inc.code}">${inc.code} — ${escapeHtml(inc.label)}</option>`).join('')}
