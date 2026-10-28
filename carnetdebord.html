@@ -2278,7 +2278,7 @@ function renderTheorie6(tab, act, activityLabel){
     const override = (data.finalOverride||{})[s.id] || '';
     const note = override || auto;
     const lc = LEVEL_COLOR[note];
-    html += `<td><span class="cell-click" style="background:${lc.bg};color:${lc.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.85;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique ("+errs+" erreur(s)) — cliquez pour la modifier manuellement"}" onclick="cycleTheorie6FinalOverride('${tab.id}','${escapeAct(activityLabel)}','${s.id}')">${note} (${errs})</span></td></tr>`;
+    html += `<td><span class="cell-click" style="background:${lc.bg};color:${lc.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.85;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique ("+errs+" erreur(s)) — cliquez pour la modifier manuellement"}" onclick="cycleTheorie6FinalOverride('${tab.id}','${escapeAct(activityLabel)}','${s.id}')">${note}</span></td></tr>`;
   });
   if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
   html += `</tbody></table></div></div></div>`;
@@ -2314,7 +2314,9 @@ function addTheorieSeance(tabId, activityLabel){
   const tab = state.tabs[tabId];
   const students = sortedStudents(tab.students);
   const starter = students.length ? students[Math.floor(Math.random()*students.length)].id : null;
-  act.evaluations.echauffementTheorie.seances.push({id:uid(), date:todayISO(), starterId:starter, marks:{}, grade:'', title:''});
+  const lastAppelDate = act.appels.reduce((max,ap)=> (!max || ap.date>max) ? ap.date : max, null);
+  const date = lastAppelDate || todayISO();
+  act.evaluations.echauffementTheorie.seances.push({id:uid(), date, starterId:starter, marks:{}, grade:'', title:''});
   saveState(); renderApp();
 }
 let revealedStarter = null;
