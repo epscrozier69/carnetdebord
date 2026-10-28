@@ -698,6 +698,22 @@ function lightTint(hex){
 function sortedStudents(students){
   return [...students].filter(s=>!s.archived).sort((a,b)=> (a.nom+a.prenom).localeCompare(b.nom+b.prenom,'fr',{sensitivity:'base'}));
 }
+function sortedStudentsByClasse(students){
+  return [...students].filter(s=>!s.archived).sort((a,b)=>{
+    const c = (a.classe||'').localeCompare(b.classe||'','fr',{sensitivity:'base'});
+    if(c) return c;
+    return (a.nom+a.prenom).localeCompare(b.nom+b.prenom,'fr',{sensitivity:'base'});
+  });
+}
+const AS_CLASSE_COLUMN_NAMES = ['taekwondo'];
+function appelShowsClasseColumn(tab){
+  if(tab.kind==='classe') return false;
+  const n = normalize(tab.name);
+  if(AS_CLASSE_COLUMN_NAMES.includes(n)) return true;
+  if(n.includes('taekwondo')) return true;
+  if(n.includes('natation') && (n.includes('lundi') || n.includes('vendredi'))) return true;
+  return false;
+}
 
 /* ============================= CSV PARSING ============================= */
 function detectDelim(line){
@@ -1651,7 +1667,8 @@ function deleteDispense(tabId, studentId, dispId){
 
 /* ============================= APPEL (generic, column-per-séance) ============================= */
 function renderAppel(tab, act, activityLabel){
-  const students = sortedStudents(tab.students);
+  const showClasse = appelShowsClasseColumn(tab);
+  const students = showClasse ? sortedStudentsByClasse(tab.students) : sortedStudents(tab.students);
   let html = `<div class="card">
     <div class="toolbar">
       <h2 style="margin:0;flex:1;display:flex;align-items:center;gap:6px;">Appel — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}
@@ -1659,14 +1676,14 @@ function renderAppel(tab, act, activityLabel){
       </h2>
       <button class="btn small" onclick="addAppel('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvel appel</button>
     </div>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>`;
+    <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>${showClasse?'<th>Classe</th>':''}`;
   act.appels.forEach((ap,i)=>{
     const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='P'?1:0), 0);
     html += `<th style="background:${colorForCol(i)};position:relative;"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.</div><br><input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕</button></th>`;
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Récap</th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>${showClasse?`<td>${escapeHtml(s.classe||'')}</td>`:''}`;
     act.appels.forEach(ap=>{
       const rec = ap.records[s.id] || {presence:'P', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
