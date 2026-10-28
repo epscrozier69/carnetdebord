@@ -2257,7 +2257,7 @@ function renderTheorie6(tab, act, activityLabel){
     <div class="toolbar">
       <h2 style="margin:0;flex:1;">Échauffement théorie — 6ème — ${escapeHtml(tab.name)}</h2>
       ${data.seances.length?`<button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="redrawTheorie6('${tab.id}','${escapeAct(activityLabel)}','${lastSeance.id}')">🎲 Tirer au sort</button>
-      <span class="starter-drag-handle" title="Glissez cette flèche sur la case de l'élève qui commence" onpointerdown="starterDragStart(event,'${tab.id}','${escapeAct(activityLabel)}','${lastSeance.id}')">➡️</span>`:''}
+      <span class="starter-drag-handle" title="Glissez cette flèche sur la case de l'élève qui commence, pour n'importe quelle séance" onpointerdown="starterDragStart(event,'${tab.id}','${escapeAct(activityLabel)}')">➡️</span>`:''}
       <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
     </div>
     ${starter?`<div style="text-align:center;font-size:1.3rem;font-weight:800;color:#fff;background:linear-gradient(135deg,${catColor},${shadeColor(catColor,-24)});border-radius:12px;padding:12px;margin-bottom:10px;">➡️ ${escapeHtml(starter.nomPrenom)}</div>`:''}
@@ -2274,7 +2274,7 @@ function renderTheorie6(tab, act, activityLabel){
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     data.seances.forEach(se=>{
-      const dropAttrs = se.id===lastSeance.id ? ` class="starter-drop-target" data-student-id="${s.id}"` : '';
+      const dropAttrs = ` class="starter-drop-target" data-student-id="${s.id}" data-seance-id="${se.id}"`;
       const presence = presenceForDate(act, se.date, s.id);
       if(presenceBlocksGrading(presence, 'echauffementTheorie')){ html += `<td${dropAttrs}>${renderAttendanceOverride(presence)}</td>`; return; }
       const isStarter = se.starterId===s.id;
@@ -2282,7 +2282,7 @@ function renderTheorie6(tab, act, activityLabel){
       const col = mark ? MARK_COLOR[mark] : {bg:'#f1f5f9',fg:'#64748b'};
       html += `<td${dropAttrs}>${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
     });
-    const errs = data.seances.reduce((n,se)=> n + ((se.marks && se.marks[s.id]==='-')?1:0), 0);
+    const errs = theorieErrorCount(data.seances, s.id);
     const auto = theorieNote(errs);
     const override = (data.finalOverride||{})[s.id] || '';
     const note = override || auto;
@@ -2317,6 +2317,14 @@ function theorieNote(errs){
   if(errs<=3) return 'S';
   if(errs<=5) return 'F';
   return 'I';
+}
+function theorieErrorCount(seances, studentId){
+  return seances.reduce((n,se)=>{
+    const m = se.marks && se.marks[studentId];
+    if(m==='-') return n+1;
+    if(m==='~') return n+0.5;
+    return n;
+  }, 0);
 }
 function addTheorieSeance(tabId, activityLabel){
   const act = findActivity(tabId, activityLabel);
@@ -2364,8 +2372,8 @@ function setTheorieStarterManual(tabId, activityLabel, seanceId, studentId){
   saveState(); renderApp();
 }
 let starterDrag = null;
-function starterDragStart(e, tabId, activityLabel, seanceId){
-  starterDrag = {tabId, activityLabel, seanceId};
+function starterDragStart(e, tabId, activityLabel){
+  starterDrag = {tabId, activityLabel};
   document.body.classList.add('starter-dragging');
   document.addEventListener('pointermove', starterDragMove);
   document.addEventListener('pointerup', starterDragEnd, {once:true});
@@ -2384,8 +2392,8 @@ function starterDragEnd(e){
   if(starterDrag){
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const cell = el && el.closest('.starter-drop-target');
-    if(cell && cell.dataset.studentId){
-      setTheorieStarterManual(starterDrag.tabId, starterDrag.activityLabel, starterDrag.seanceId, cell.dataset.studentId);
+    if(cell && cell.dataset.studentId && cell.dataset.seanceId){
+      setTheorieStarterManual(starterDrag.tabId, starterDrag.activityLabel, cell.dataset.seanceId, cell.dataset.studentId);
     }
   }
   starterDrag = null;
@@ -2570,7 +2578,7 @@ function recapColumns(tab, act){
       if(!ev.echauffementTheorie.seances.length) return '';
       const override = (ev.echauffementTheorie.finalOverride||{})[s.id];
       if(override) return override;
-      const errs = ev.echauffementTheorie.seances.reduce((n,se)=> n + ((se.marks && se.marks[s.id]==='-')?1:0),0);
+      const errs = theorieErrorCount(ev.echauffementTheorie.seances, s.id);
       return theorieNote(errs);
     }});
   }
