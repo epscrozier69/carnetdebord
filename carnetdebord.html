@@ -545,6 +545,24 @@ function saveState(){
 function saveStateLocalOnly(){
   try{ localStorage.setItem('cdb_state_v2', JSON.stringify(state)); }catch(e){ console.warn('save failed', e); }
 }
+function snapshotLocalBeforeOverwrite(){
+  try{
+    const current = localStorage.getItem('cdb_state_v2');
+    if(current) localStorage.setItem('cdb_state_v2_prev', current);
+  }catch(e){}
+}
+function undoLastSyncOverwrite(){
+  let prev;
+  try{ prev = localStorage.getItem('cdb_state_v2_prev'); }catch(e){}
+  if(!prev){ alert("Aucune sauvegarde de secours disponible sur cet appareil."); return; }
+  if(!confirm("Restaurer les données telles qu'elles étaient sur cet appareil juste avant la dernière synchro reçue ?")) return;
+  try{
+    state = JSON.parse(prev);
+    saveState();
+    closeModal();
+    renderApp();
+  }catch(e){ alert("Impossible de lire la sauvegarde de secours."); }
+}
 
 /* ============================= SYNC (Google Apps Script) ============================= */
 const SYNC_CONFIG_KEY = 'cdb_sync_appscript_v1';
@@ -617,6 +635,7 @@ async function pullFromAppsScript(){
           syncState.conflict = {kind:'pull', localSize, remoteSize, remoteData:data};
           syncState.lastError = 'Les données reçues du cloud semblent très incomplètes ('+remoteSize+' élève(s) contre '+localSize+' actuellement sur cet appareil). La synchro a été mise en pause pour ne rien écraser — ouvrez "🔄 Synchro" pour décider.';
         } else {
+          snapshotLocalBeforeOverwrite();
           state = data;
           saveStateLocalOnly();
           renderApp();
@@ -709,6 +728,7 @@ function openSyncModal(){
         <input id="syncKey" value="${escapeHtml(cfg.key)}" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;">
       </div>
       <p class="legend" id="syncTestResult" style="display:none;"></p>
+      ${(()=>{ let hasPrev=false; try{ hasPrev=!!localStorage.getItem('cdb_state_v2_prev'); }catch(e){} return hasPrev; })()?`<p class="legend">Une copie des données de cet appareil juste avant la dernière synchro reçue est disponible. <button class="btn ghost small" onclick="undoLastSyncOverwrite()">↩️ Annuler la dernière synchro reçue</button></p>`:''}
       <div class="modal-foot" style="justify-content:space-between;">
         <div>${syncConfig?`<button class="btn danger small" onclick="disableSync()">Désactiver la synchro</button>`:''}</div>
         <div style="display:flex;gap:8px;">
@@ -757,6 +777,7 @@ function resolveSyncConflict(apply){
   closeModal();
   if(conflict.kind==='pull'){
     if(apply){
+      snapshotLocalBeforeOverwrite();
       state = conflict.remoteData;
       saveStateLocalOnly();
       renderApp();
