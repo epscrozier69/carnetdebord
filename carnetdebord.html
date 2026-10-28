@@ -253,6 +253,11 @@ table.data tr:nth-child(even) td.name{background:#dde1f2;}
   transition:.12s;
 }
 .incbtn.on:hover{filter:brightness(1.2);transform:scale(1.08);}
+.starter-drag-handle{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:1.3rem;cursor:grab;box-shadow:0 2px 7px rgba(37,99,235,.35);touch-action:none;user-select:none;-webkit-user-select:none;}
+.starter-drag-handle:active{cursor:grabbing;}
+body.starter-dragging{cursor:grabbing;}
+body.starter-dragging .starter-drop-target{outline:2px dashed rgba(37,99,235,.5);outline-offset:-2px;}
+.starter-drop-target.drag-over{background:#bfdbfe !important;outline:2px solid #2563eb !important;}
 .chip-toggle{border:2px solid var(--chip,#94a3b8);background:#fff;color:var(--chip,#475569);font-weight:800;font-size:.75rem;padding:5px 12px;border-radius:999px;cursor:pointer;transition:.12s;}
 .chip-toggle.on{background:var(--chip,#475569);color:#fff;}
 .chip-toggle:hover{transform:translateY(-1px);}
@@ -376,7 +381,7 @@ const NIVEAU_ACTIVITIES = {
 };
 
 const PRESENCE_CYCLE = ['P','RETARD','ABS','DP','DISP','SLASH','EXCETA'];
-const PRESENCE_LABEL = {P:'P',RETARD:'Ret',ABS:'Abs',DP:'DP',DISP:'Disp',SLASH:'/',EXCETA:'Exc Éta'};
+const PRESENCE_LABEL = {P:'✅',RETARD:'Ret',ABS:'Abs',DP:'DP',DISP:'Disp',SLASH:'/',EXCETA:'Exc Éta'};
 const PRESENCE_TITLE = {P:'Présent',RETARD:'Retard',ABS:'Absent',DP:'Dispensé ponctuellement',DISP:'Dispensé',SLASH:'Non concerné',EXCETA:'Exclu de l\'établissement'};
 const PRESENCE_COLOR = {P:{bg:'#dbeafe',fg:'#1e3a8a'},RETARD:{bg:'#fef08a',fg:'#854d0e'},ABS:{bg:'#fecaca',fg:'#7f1d1d'},DP:{bg:'#fed7aa',fg:'#7c2d12'},DISP:{bg:'#e9d5ff',fg:'#581c87'},SLASH:{bg:'#64748b',fg:'#fff'},EXCETA:{bg:'#881337',fg:'#fff'}};
 
@@ -395,7 +400,7 @@ const INCIDENTS = [
 ];
 const INCIDENT_COLOR = {
   'T':'#f87171', 'M':'#ef4444', '⚠':'#f97316', 'Obs':'#dc2626',
-  'Exc':'#991b1b', 'RA':'#ff1a1a', 'R':'#64748b', 'P':'#4f46e5'
+  'Exc':'#991b1b', 'RA':'#ff1a1a', 'R':'#64748b', 'P':'#ea580c'
 };
 
 const LEVEL_CYCLE = ['','TB','S','F','I'];
@@ -1778,7 +1783,8 @@ function renderAppel(tab, act, activityLabel){
             const bg = INCIDENT_COLOR[code]||'#334155';
             if(code==='P'){
               const title = rec.punitionDone ? 'Punition rendue — cliquer pour retirer' : 'Punition à rendre — cliquer quand rendue';
-              return `<button class="incbtn on" style="background:${bg};border-color:${bg};${rec.punitionDone?'text-decoration:line-through;':''}" title="${title}" onclick="cyclePunition('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">P</button>`;
+              const doneStyle = 'background:#e2e8f0;border-color:#94a3b8;color:#475569;text-decoration:line-through;text-decoration-thickness:2.5px;text-decoration-color:#dc2626;';
+              return `<button class="incbtn on" style="${rec.punitionDone?doneStyle:`background:${bg};border-color:${bg};`}" title="${title}" onclick="cyclePunition('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">P</button>`;
             }
             return `<button class="incbtn on" style="background:${bg};border-color:${bg};" title="Retirer : ${escapeHtml(inc?inc.label:code)}" onclick="toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}','${code}')">${code}</button>`;
           }).join('')}
@@ -1962,6 +1968,11 @@ function presenceForDate(act, date, studentId){
   if(!ap) return null;
   const rec = ap.records[studentId];
   return rec ? rec.presence : null;
+}
+function presenceBlocksGrading(presence, key){
+  if(!presence || presence==='P') return false;
+  if(key==='echauffementTheorie') return !['RETARD','DP'].includes(presence);
+  return true;
 }
 function renderAttendanceOverride(presence){
   const col = PRESENCE_COLOR[presence];
@@ -2246,10 +2257,7 @@ function renderTheorie6(tab, act, activityLabel){
     <div class="toolbar">
       <h2 style="margin:0;flex:1;">Échauffement théorie — 6ème — ${escapeHtml(tab.name)}</h2>
       ${data.seances.length?`<button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="redrawTheorie6('${tab.id}','${escapeAct(activityLabel)}','${lastSeance.id}')">🎲 Tirer au sort</button>
-      <select class="btn secondary small" style="font-weight:700;max-width:160px;" onchange="if(this.value){ setTheorieStarterManual('${tab.id}','${escapeAct(activityLabel)}','${lastSeance.id}', this.value); this.value=''; }">
-        <option value="">👤 Choisir qui commence</option>
-        ${students.map(s=>`<option value="${s.id}">${escapeHtml(s.nomPrenom)}</option>`).join('')}
-      </select>`:''}
+      <span class="starter-drag-handle" title="Glissez cette flèche sur la case de l'élève qui commence" onpointerdown="starterDragStart(event,'${tab.id}','${escapeAct(activityLabel)}','${lastSeance.id}')">➡️</span>`:''}
       <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
     </div>
     ${starter?`<div style="text-align:center;font-size:1.3rem;font-weight:800;color:#fff;background:linear-gradient(135deg,${catColor},${shadeColor(catColor,-24)});border-radius:12px;padding:12px;margin-bottom:10px;">➡️ ${escapeHtml(starter.nomPrenom)}</div>`:''}
@@ -2266,12 +2274,13 @@ function renderTheorie6(tab, act, activityLabel){
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     data.seances.forEach(se=>{
+      const dropAttrs = se.id===lastSeance.id ? ` class="starter-drop-target" data-student-id="${s.id}"` : '';
       const presence = presenceForDate(act, se.date, s.id);
-      if(presence && presence!=='P'){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
+      if(presenceBlocksGrading(presence, 'echauffementTheorie')){ html += `<td${dropAttrs}>${renderAttendanceOverride(presence)}</td>`; return; }
       const isStarter = se.starterId===s.id;
       const mark = (se.marks && se.marks[s.id]) || '';
       const col = mark ? MARK_COLOR[mark] : {bg:'#f1f5f9',fg:'#64748b'};
-      html += `<td>${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
+      html += `<td${dropAttrs}>${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
     });
     const errs = data.seances.reduce((n,se)=> n + ((se.marks && se.marks[s.id]==='-')?1:0), 0);
     const auto = theorieNote(errs);
@@ -2354,6 +2363,33 @@ function setTheorieStarterManual(tabId, activityLabel, seanceId, studentId){
   revealStarter(tabId, activityLabel, studentId);
   saveState(); renderApp();
 }
+let starterDrag = null;
+function starterDragStart(e, tabId, activityLabel, seanceId){
+  starterDrag = {tabId, activityLabel, seanceId};
+  document.body.classList.add('starter-dragging');
+  document.addEventListener('pointermove', starterDragMove);
+  document.addEventListener('pointerup', starterDragEnd, {once:true});
+  e.preventDefault();
+}
+function starterDragMove(e){
+  if(!starterDrag) return;
+  document.querySelectorAll('.starter-drop-target.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const cell = el && el.closest('.starter-drop-target');
+  if(cell) cell.classList.add('drag-over');
+}
+function starterDragEnd(e){
+  document.removeEventListener('pointermove', starterDragMove);
+  document.body.classList.remove('starter-dragging');
+  if(starterDrag){
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = el && el.closest('.starter-drop-target');
+    if(cell && cell.dataset.studentId){
+      setTheorieStarterManual(starterDrag.tabId, starterDrag.activityLabel, starterDrag.seanceId, cell.dataset.studentId);
+    }
+  }
+  starterDrag = null;
+}
 function updateTheorieDate(tabId, activityLabel, seanceId, val){
   const act = findActivity(tabId, activityLabel);
   const se = act.evaluations.echauffementTheorie.seances.find(s=>s.id===seanceId);
@@ -2413,7 +2449,7 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
     evalObj.seances.forEach(se=>{
       const presence = presenceForDate(act, se.date, s.id);
-      if(presence && presence!=='P'){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
+      if(presenceBlocksGrading(presence, key)){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
       const val = se.marks[s.id] || '';
       const col = val ? LEVEL_COLOR[val] : {bg:'#f1f5f9',fg:'#64748b'};
       html += `<td><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleSimpleLevel('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">${val||'·'}</span></td>`;
