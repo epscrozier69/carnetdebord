@@ -253,16 +253,16 @@ table.data tr:nth-child(even) td.name{background:#dde1f2;}
 }
 .incbtn.on:hover{filter:brightness(1.2);transform:scale(1.08);}
 .inc-add{
-  width:24px;
-  height:24px;
+  width:18px;
+  height:18px;
   flex-shrink:0;
   -webkit-appearance:none;
   -moz-appearance:none;
   appearance:none;
-  border:1px solid var(--border);
-  background:#f8fafc;
-  color:var(--primary);
-  font-size:.9rem;
+  border:none;
+  background:transparent;
+  color:#cbd5e1;
+  font-size:.8rem;
   font-weight:800;
   padding:0;
   border-radius:50%;
@@ -270,7 +270,10 @@ table.data tr:nth-child(even) td.name{background:#dde1f2;}
   text-align:center;
   text-align-last:center;
   cursor:pointer;
+  opacity:.65;
+  transition:.12s;
 }
+.inc-add:hover,.inc-add:focus{background:#f1f5f9;color:var(--primary);opacity:1;}
 
 .pillrow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
 .pill{
