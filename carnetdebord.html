@@ -233,6 +233,7 @@ table.data td.name,table.data th.name{
 table.data th.name{background:var(--primary-dark);color:#fff;z-index:5;}
 table.data tr:nth-child(even) td{background:#e8ebf5;}
 table.data tr:nth-child(even) td.name{background:#dde1f2;}
+table.data td.num.row-highlight,table.data td.name.row-highlight{background:#fde68a!important;box-shadow:inset 0 0 0 2px #f59e0b;}
 
 .cell-click{cursor:pointer;border-radius:7px;padding:2px 7px;display:inline-block;min-width:26px;font-weight:800;box-shadow:0 1px 2px rgba(0,0,0,.1);transition:.12s;}
 .cell-click:hover{outline:2px solid rgba(67,56,202,.3);transform:scale(1.06);}
@@ -526,6 +527,7 @@ function dispenseAppliesToActivity(match, activityLabel){
   return true;
 }
 let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}, appelClasseSort:true, appelDateOrder:'asc'};
+let highlightRow = null;
 let importState = null;
 
 function defaultState(){ return {tabs:{}, order:[]}; }
@@ -1874,25 +1876,26 @@ function renderAppel(tab, act, activityLabel){
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Récap<br><span style="font-size:.65rem;font-weight:600;opacity:.85;">${appelsSorted.length} séance${appelsSorted.length>1?'s':''} faite${appelsSorted.length>1?'s':''}</span></th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>${showClasse?`<td>${escapeHtml(s.classe||'')}</td>`:''}`;
+    const hl = s.id===highlightRow ? ' row-highlight' : '';
+    html += `<tr><td class="num${hl}">${idx+1}</td><td class="name${hl}">${escapeHtml(s.nomPrenom)}</td>${showClasse?`<td>${escapeHtml(s.classe||'')}</td>`:''}`;
     appelsSorted.forEach(ap=>{
       const rec = ap.records[s.id] || {presence:'P', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
       const isThursdayCol = taekwondoTab && dateDayOfWeek(ap.date)===4;
       html += `<td${isThursdayCol?' style="background:#e2e8f0;"':''}>
         <div class="appel-cell">
-          <span class="cell-click" style="background:${col.bg};color:${col.fg}" title="${PRESENCE_TITLE[rec.presence]}" onclick="cyclePresence('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">${PRESENCE_LABEL[rec.presence]}</span>
+          <span class="cell-click" style="background:${col.bg};color:${col.fg}" title="${PRESENCE_TITLE[rec.presence]}" onclick="highlightRow='${s.id}';cyclePresence('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">${PRESENCE_LABEL[rec.presence]}</span>
           ${rec.incidents.map(code=>{
             const inc = INCIDENTS.find(i=>i.code===code);
             const bg = INCIDENT_COLOR[code]||'#334155';
             if(code==='P'){
               const title = rec.punitionDone ? 'Punition rendue — cliquer pour retirer' : 'Punition à rendre — cliquer quand rendue';
               const doneStyle = 'background:#e2e8f0;border-color:#94a3b8;color:#475569;text-decoration:line-through;text-decoration-thickness:2.5px;text-decoration-color:#dc2626;';
-              return `<button class="incbtn on" style="${rec.punitionDone?doneStyle:`background:${bg};border-color:${bg};`}" title="${title}" onclick="cyclePunition('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">P</button>`;
+              return `<button class="incbtn on" style="${rec.punitionDone?doneStyle:`background:${bg};border-color:${bg};`}" title="${title}" onclick="highlightRow='${s.id}';cyclePunition('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">P</button>`;
             }
-            return `<button class="incbtn on" style="background:${bg};border-color:${bg};" title="Retirer : ${escapeHtml(inc?inc.label:code)}" onclick="toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}','${code}')">${code}</button>`;
+            return `<button class="incbtn on" style="background:${bg};border-color:${bg};" title="Retirer : ${escapeHtml(inc?inc.label:code)}" onclick="highlightRow='${s.id}';toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}','${code}')">${code}</button>`;
           }).join('')}
-          <select class="inc-add" title="Ajouter un incident" onchange="if(this.value){ toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}', this.value); } this.value='';">
+          <select class="inc-add" title="Ajouter un incident" onchange="if(this.value){ highlightRow='${s.id}';toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}', this.value); } this.value='';">
             <option value="">+</option>
             ${INCIDENTS.filter(inc=>!rec.incidents.includes(inc.code)).map(inc=>`<option value="${inc.code}">${inc.code} — ${escapeHtml(inc.label)}</option>`).join('')}
           </select>
@@ -1933,7 +1936,8 @@ function renderConseil(tab, act, activityLabel){
   });
   html += `</tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    const hl = s.id===highlightRow ? ' row-highlight' : '';
+    html += `<tr><td class="num${hl}">${idx+1}</td><td class="name${hl}">${escapeHtml(s.nomPrenom)}</td>`;
     periods.forEach(p=>{
       const entry = p.entries[s.id] || {mentions:[], comment:''};
       const chips = entry.mentions.map(code=>{
@@ -1941,7 +1945,7 @@ function renderConseil(tab, act, activityLabel){
         return `<span class="badge" style="background:${m?m.color:'#64748b'};color:#fff;margin:1px;">${code}</span>`;
       }).join('');
       const commentMark = entry.comment ? `<span title="${escapeHtml(entry.comment)}">💬</span>` : '';
-      html += `<td style="cursor:pointer;" onclick="openConseilEntry('${tab.id}','${escapeAct(activityLabel)}','${p.id}','${s.id}')">${chips||'<span style="color:#cbd5e1;">—</span>'}${commentMark}</td>`;
+      html += `<td style="cursor:pointer;" onclick="highlightRow='${s.id}';openConseilEntry('${tab.id}','${escapeAct(activityLabel)}','${p.id}','${s.id}')">${chips||'<span style="color:#cbd5e1;">—</span>'}${commentMark}</td>`;
     });
     html += `</tr>`;
   });
@@ -2384,7 +2388,8 @@ function renderTheorie6(tab, act, activityLabel){
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    const hl = s.id===highlightRow ? ' row-highlight' : '';
+    html += `<tr><td class="num${hl}">${idx+1}</td><td class="name${hl}">${escapeHtml(s.nomPrenom)}</td>`;
     data.seances.forEach(se=>{
       const dropAttrs = ` class="starter-drop-target" data-student-id="${s.id}" data-seance-id="${se.id}"`;
       const presence = presenceForDate(act, se.date, s.id);
@@ -2392,14 +2397,14 @@ function renderTheorie6(tab, act, activityLabel){
       const isStarter = se.starterId===s.id;
       const mark = (se.marks && se.marks[s.id]) || '';
       const col = mark ? MARK_COLOR[mark] : {bg:'#f1f5f9',fg:'#64748b'};
-      html += `<td${dropAttrs}>${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
+      html += `<td${dropAttrs}>${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="highlightRow='${s.id}';cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
     });
     const errs = theorieErrorCount(data.seances, s.id);
     const auto = theorieNote(errs);
     const override = (data.finalOverride||{})[s.id] || '';
     const note = override || auto;
     const lc = LEVEL_COLOR[note];
-    html += `<td><span class="cell-click" style="background:${lc.bg};color:${lc.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.85;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique ("+errs+" erreur(s)) — cliquez pour la modifier manuellement"}" onclick="cycleTheorie6FinalOverride('${tab.id}','${escapeAct(activityLabel)}','${s.id}')">${note}</span></td></tr>`;
+    html += `<td><span class="cell-click" style="background:${lc.bg};color:${lc.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.85;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique ("+errs+" erreur(s)) — cliquez pour la modifier manuellement"}" onclick="highlightRow='${s.id}';cycleTheorie6FinalOverride('${tab.id}','${escapeAct(activityLabel)}','${s.id}')">${note}</span></td></tr>`;
   });
   if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
   html += `</tbody></table></div></div></div>`;
@@ -2563,19 +2568,20 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
   html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th>`;
   html += `</tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    const hl = s.id===highlightRow ? ' row-highlight' : '';
+    html += `<tr><td class="num${hl}">${idx+1}</td><td class="name${hl}">${escapeHtml(s.nomPrenom)}</td>`;
     evalObj.seances.forEach(se=>{
       const presence = presenceForDate(act, se.date, s.id);
       if(presenceBlocksGrading(presence, key)){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
       const val = se.marks[s.id] || '';
       const col = val ? LEVEL_COLOR[val] : {bg:'#f1f5f9',fg:'#64748b'};
-      html += `<td><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleSimpleLevel('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">${val||'·'}</span></td>`;
+      html += `<td><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="highlightRow='${s.id}';cycleSimpleLevel('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">${val||'·'}</span></td>`;
     });
     const auto = levelAverage(evalObj.seances.map(se=>se.marks[s.id]));
     const override = (evalObj.finalOverride||{})[s.id] || '';
     const finalVal = override || auto;
     const fcol = finalVal ? LEVEL_COLOR[finalVal] : {bg:'#f1f5f9',fg:'#64748b'};
-    html += `<td style="border-left:2px solid ${catColor};"><span class="cell-click" style="background:${fcol.bg};color:${fcol.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.7;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique (moyenne) — cliquez pour la modifier manuellement"}" onclick="cycleFinalOverride('${tab.id}','${escapeAct(activityLabel)}','${key}','${s.id}')">${finalVal||'·'}</span></td>`;
+    html += `<td style="border-left:2px solid ${catColor};"><span class="cell-click" style="background:${fcol.bg};color:${fcol.fg};${override?'box-shadow:0 0 0 2px '+catColor+' inset;':'opacity:.7;'}" title="${override?"Note finale modifiée manuellement — cliquez pour cycler, repasse en automatique après I":"Note finale automatique (moyenne) — cliquez pour la modifier manuellement"}" onclick="highlightRow='${s.id}';cycleFinalOverride('${tab.id}','${escapeAct(activityLabel)}','${key}','${s.id}')">${finalVal||'·'}</span></td>`;
     html += `</tr>`;
   });
   if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
