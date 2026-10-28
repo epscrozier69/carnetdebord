@@ -302,8 +302,6 @@ body.starter-dragging .starter-drop-target{outline:2px dashed rgba(37,99,235,.5)
 .th-del{position:absolute;top:3px;right:3px;width:17px;height:17px;line-height:15px;display:flex;align-items:center;justify-content:center;background:#ef4444;border:1px solid rgba(255,255,255,.6);color:#fff;border-radius:50%;font-size:.6rem;font-weight:800;padding:0;cursor:pointer;transition:.15s;}
 .th-del:hover{background:#b91c1c;}
 .col-count{font-size:.66rem;font-weight:800;background:rgba(255,255,255,.25);border-radius:5px;padding:1px 6px;margin-bottom:2px;display:inline-block;}
-.appel-title-input{display:block;width:100px;border:none;background:transparent;color:#fff;font-weight:700;font-size:.68rem;text-align:center;padding:0;}
-.appel-title-input::placeholder{color:rgba(255,255,255,.65);}
 .add-mini{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:.8rem;font-weight:800;line-height:1;border:none;cursor:pointer;padding:0;vertical-align:middle;}
 .add-mini:hover{background:#312e81;}
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:.85rem;flex-shrink:0;transition:.15s;}
@@ -1767,7 +1765,9 @@ function renderAppel(tab, act, activityLabel){
   appelsSorted.forEach((ap,i)=>{
     const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='P'?1:0), 0);
     const dpCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='DP'?1:0), 0);
-    html += `<th style="background:${colorForCol(i)};position:relative;"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.${dpCount?' + '+dpCount+' DP':''}</div><input type="text" class="appel-title-input" value="${escapeHtml(ap.title||'')}" placeholder="Titre (optionnel)" title="Titre de la séance" onchange="updateAppelTitle('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><br><input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕</button></th>`;
+    html += `<th style="background:${colorForCol(i)};position:relative;"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.${dpCount?' + '+dpCount+' DP':''}</div>
+      <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;margin:0 auto;" title="${escapeHtml(ap.title||'Cliquer pour ajouter un titre')}" onclick="renameAppelTitle('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">${ap.title?escapeHtml(ap.title):'+ titre'}</div>
+      <input type="date" value="${ap.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateAppelDate('${tab.id}','${escapeAct(activityLabel)}','${ap.id}',this.value)"><button class="th-del" title="Supprimer cet appel" onclick="deleteAppel('${tab.id}','${escapeAct(activityLabel)}','${ap.id}')">✕</button></th>`;
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Récap<br><span style="font-size:.65rem;font-weight:600;opacity:.85;">${appelsSorted.length} séance${appelsSorted.length>1?'s':''} faite${appelsSorted.length>1?'s':''}</span></th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
@@ -1987,11 +1987,14 @@ function addAppel(tabId, activityLabel){
   act.appels.push({id:uid(), date, title:'', records});
   saveState(); renderApp();
 }
-function updateAppelTitle(tabId, activityLabel, appelId, val){
+function renameAppelTitle(tabId, activityLabel, appelId){
   const act = findActivity(tabId, activityLabel);
   const ap = act.appels.find(a=>a.id===appelId);
-  if(ap) ap.title = val;
-  saveState();
+  if(!ap) return;
+  const title = prompt('Titre de cette séance (optionnel) :', ap.title||'');
+  if(title==null) return;
+  ap.title = title;
+  saveState(); renderApp();
 }
 function updateAppelDate(tabId, activityLabel, appelId, val){
   const act = findActivity(tabId, activityLabel);
@@ -2328,12 +2331,9 @@ function theorieErrorCount(seances, studentId){
 }
 function addTheorieSeance(tabId, activityLabel){
   const act = findActivity(tabId, activityLabel);
-  const tab = state.tabs[tabId];
-  const students = sortedStudents(tab.students);
-  const starter = students.length ? students[Math.floor(Math.random()*students.length)].id : null;
   const lastAppelDate = act.appels.reduce((max,ap)=> (!max || ap.date>max) ? ap.date : max, null);
   const date = lastAppelDate || todayISO();
-  act.evaluations.echauffementTheorie.seances.push({id:uid(), date, starterId:starter, marks:{}, grade:'', title:''});
+  act.evaluations.echauffementTheorie.seances.push({id:uid(), date, starterId:null, marks:{}, grade:'', title:''});
   saveState(); renderApp();
 }
 let revealedStarter = null;
