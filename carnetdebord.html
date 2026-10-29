@@ -1877,17 +1877,28 @@ function deleteDispense(tabId, studentId, dispId){
 }
 
 /* ============================= APPEL (generic, column-per-séance) ============================= */
+function appelSortKey_(tabId, activityLabel){ return tabId+'::'+activityLabel; }
+function getAppelDateOrder(tabId, activityLabel){
+  return (nav.appelDateOrderByKey || {})[appelSortKey_(tabId, activityLabel)] || 'asc';
+}
+function toggleAppelDateOrder(tabId, activityLabel){
+  const key = appelSortKey_(tabId, activityLabel);
+  const cur = getAppelDateOrder(tabId, activityLabel);
+  nav.appelDateOrderByKey = Object.assign({}, nav.appelDateOrderByKey, {[key]: cur==='desc'?'asc':'desc'});
+  renderApp();
+}
 function renderAppel(tab, act, activityLabel){
   const showClasse = appelShowsClasseColumn(tab);
   const students = (showClasse && nav.appelClasseSort) ? sortedStudentsByClasse(tab.students) : sortedStudents(tab.students);
-  const appelsSorted = [...act.appels].sort((a,b)=> nav.appelDateOrder==='desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
+  const dateOrder = getAppelDateOrder(tab.id, activityLabel);
+  const appelsSorted = [...act.appels].sort((a,b)=> dateOrder==='desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
   let html = `<div class="card">
     <div class="toolbar">
       <h2 style="margin:0;flex:1;display:flex;align-items:center;gap:6px;">Appel — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}
         ${tab.kind!=='classe'?`<button class="icon-btn edit" title="Renommer l'onglet" onclick="renameActivity('${tab.id}','${escapeAct(activityLabel)}')">✎</button><button class="icon-btn danger" title="Supprimer l'onglet" onclick="deleteActivity('${tab.id}','${escapeAct(activityLabel)}')">🗑</button>`:''}
         <button class="btn small" onclick="addAppel('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvel appel</button>
       </h2>
-      <button class="btn secondary small" title="Changer l'ordre des colonnes" onclick="setNav({appelDateOrder: nav.appelDateOrder==='desc'?'asc':'desc'})">${nav.appelDateOrder==='desc'?'⬇ Récent → ancien':'⬆ Ancien → récent'}</button>
+      <button class="btn secondary small" title="Changer l'ordre des colonnes (pour ce tableau uniquement)" onclick="toggleAppelDateOrder('${tab.id}','${escapeAct(activityLabel)}')">${dateOrder==='desc'?'Récent → ancien':'Ancien → récent'}</button>
     </div>
     <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>${showClasse?`<th style="background:${FIXED_HEADER_BG};cursor:pointer;" title="Cliquer pour changer le tri" onclick="setNav({appelClasseSort:!nav.appelClasseSort})">Classe ${nav.appelClasseSort?'🔽':'A→Z'}</th>`:''}`;
   const taekwondoTab = isTaekwondoTab(tab);
