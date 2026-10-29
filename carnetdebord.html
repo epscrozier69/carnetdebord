@@ -814,8 +814,8 @@ function fmtDateFR(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); retur
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function sexeIcon(val){
   const v = normalize(val||'');
-  if(v.startsWith('m')) return '<span style="color:#2563eb;font-weight:800;" title="Masculin">♂</span>';
-  if(v.startsWith('f')) return '<span style="color:#db2777;font-weight:800;" title="Féminin">♀</span>';
+  if(v.startsWith('m') || v.startsWith('g')) return '<span style="color:#2563eb;font-weight:800;font-size:1.5rem;line-height:1;vertical-align:middle;" title="Masculin">♂</span>';
+  if(v.startsWith('f')) return '<span style="color:#db2777;font-weight:800;font-size:1.5rem;line-height:1;vertical-align:middle;" title="Féminin">♀</span>';
   return escapeHtml(val||'');
 }
 function colorForCol(i){
