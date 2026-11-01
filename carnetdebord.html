@@ -1965,7 +1965,7 @@ function renderConseil(tab, act, activityLabel){
     </div>
     <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>`;
   periods.forEach((p,i)=>{
-    html += `<th style="background:${colorForCol(i)};position:relative;">${escapeHtml(p.title)}
+    html += `<th style="background:${colorForCol(i)};position:relative;padding:4px 46px 4px 8px;">${escapeHtml(p.title)}
       <button class="th-del" style="right:22px;background:#2563eb;" title="Renommer cette période" onclick="renameConseilPeriod('${tab.id}','${escapeAct(activityLabel)}','${p.id}')">✎</button>
       <button class="th-del" title="Supprimer cette période" onclick="deleteConseilPeriod('${tab.id}','${escapeAct(activityLabel)}','${p.id}')">✕</button>
     </th>`;
