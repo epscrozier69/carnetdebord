@@ -531,6 +531,17 @@ function dispenseAppliesToActivity(match, activityLabel){
   return true;
 }
 let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}, appelClasseSort:true, appelDateOrder:'asc'};
+const NAV_KEY = 'cdb_nav_v1';
+function loadNav(){
+  try{
+    const raw = localStorage.getItem(NAV_KEY);
+    if(raw) Object.assign(nav, JSON.parse(raw));
+  }catch(e){ console.warn('nav load failed', e); }
+}
+function saveNav(){
+  try{ localStorage.setItem(NAV_KEY, JSON.stringify(nav)); }catch(e){ console.warn('nav save failed', e); }
+}
+loadNav();
 let importState = null;
 
 function defaultState(){ return {tabs:{}, order:[]}; }
@@ -1550,6 +1561,7 @@ function renderApp(){
       target.innerHTML = renderActivity(tab, act, nav.activity);
     }
   }
+  saveNav();
 }
 
 /* ============================= ELEVES ============================= */
