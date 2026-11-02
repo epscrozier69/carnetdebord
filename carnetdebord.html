@@ -614,6 +614,7 @@ function updateSyncStatusUI(){
   const btn = document.getElementById('syncStatusBtn');
   if(!btn) return;
   btn.title = syncState.lastError || '';
+  if(!navigator.onLine){ btn.textContent = '📴 Hors ligne — données enregistrées ici, envoi dès le retour du réseau'; return; }
   if(!syncConfig){ btn.textContent = '🔄 Synchro : non configurée'; return; }
   if(syncState.conflict){ btn.textContent = '⚠ Synchro en pause — vérification nécessaire, cliquez ici'; return; }
   if(syncState.busy){ btn.textContent = '🔄 Synchro en cours…'; return; }
@@ -622,6 +623,7 @@ function updateSyncStatusUI(){
 }
 async function pullFromAppsScript(){
   if(!syncConfig) return;
+  if(!navigator.onLine){ updateSyncStatusUI(); return; }
   syncState.busy = true; updateSyncStatusUI();
   try{
     const url = syncConfig.scriptUrl+'?key='+encodeURIComponent(syncConfig.key)+'&t='+Date.now();
@@ -668,6 +670,7 @@ function scheduleSyncPush(){
 }
 async function pushToAppsScript(force){
   if(!syncConfig) return;
+  if(!navigator.onLine){ syncState.pushPending = true; updateSyncStatusUI(); return; }
   if(!force && lastKnownRemoteSize!=null){
     const localSize = roughDataSize(state);
     if(lastKnownRemoteSize>0 && localSize < lastKnownRemoteSize*0.5){
@@ -2766,6 +2769,15 @@ if(syncConfig) pullFromAppsScript();
 setInterval(()=>{ if(syncConfig && !syncState.busy) pullFromAppsScript(); }, 60000);
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && syncConfig && !syncState.busy) pullFromAppsScript(); });
 window.addEventListener('focus', ()=>{ if(syncConfig && !syncState.busy) pullFromAppsScript(); });
+window.addEventListener('online', ()=>{
+  syncState.lastError = null;
+  updateSyncStatusUI();
+  if(syncConfig){ pullFromAppsScript().then(()=>pushToAppsScript()); }
+});
+window.addEventListener('offline', ()=>{ updateSyncStatusUI(); });
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('./sw.js').catch(()=>{}); });
+}
 </script>
 </body>
 </html>
