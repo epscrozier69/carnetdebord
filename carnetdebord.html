@@ -1500,6 +1500,9 @@ function orderedTabIds(){
 }
 function renderApp(){
   const app = document.getElementById('app');
+  const prevScroller = document.querySelector('#section-content .table-scroll');
+  const prevScrollLeft = prevScroller ? prevScroller.scrollLeft : null;
+  const prevScrollTop = prevScroller ? prevScroller.scrollTop : null;
   if(!state.order.length){
     app.innerHTML = `<div class="card empty">
       <h2>Bienvenue 👋</h2>
@@ -1560,6 +1563,10 @@ function renderApp(){
     } else {
       target.innerHTML = renderActivity(tab, act, nav.activity);
     }
+  }
+  if(prevScrollLeft!=null){
+    const newScroller = document.querySelector('#section-content .table-scroll');
+    if(newScroller){ newScroller.scrollLeft = prevScrollLeft; newScroller.scrollTop = prevScrollTop; }
   }
   saveNav();
 }
@@ -2178,6 +2185,12 @@ function cyclePresence(tabId, activityLabel, appelId, studentId){
   rec.presence = PRESENCE_CYCLE[(idx+1)%PRESENCE_CYCLE.length];
   saveState(); renderApp();
 }
+function cycleTheoriePresence(tabId, activityLabel, date, studentId){
+  const act = findActivity(tabId, activityLabel);
+  let ap = act.appels.find(a=>a.date===date);
+  if(!ap){ ap = {id:uid(), date, title:'', records:{}}; act.appels.push(ap); }
+  cyclePresence(tabId, activityLabel, ap.id, studentId);
+}
 function toggleIncident(tabId, activityLabel, appelId, studentId, code){
   const act = findActivity(tabId, activityLabel);
   const ap = act.appels.find(a=>a.id===appelId);
@@ -2409,11 +2422,23 @@ function renderEchauffement(tab, act, activityLabel){
 }
 
 /* 6ème : toute la classe est interrogée à chaque séance, un mark +/-/~ par élève */
+function theorieSortKey_(tabId, activityLabel){ return tabId+'::'+activityLabel; }
+function getTheorieDateOrder(tabId, activityLabel){
+  return (nav.theorieDateOrderByKey || {})[theorieSortKey_(tabId, activityLabel)] || 'asc';
+}
+function toggleTheorieDateOrder(tabId, activityLabel){
+  const key = theorieSortKey_(tabId, activityLabel);
+  const cur = getTheorieDateOrder(tabId, activityLabel);
+  nav.theorieDateOrderByKey = Object.assign({}, nav.theorieDateOrderByKey, {[key]: cur==='desc'?'asc':'desc'});
+  renderApp();
+}
 function renderTheorie6(tab, act, activityLabel){
   const data = act.evaluations.echauffementTheorie;
   const students = sortedStudents(tab.students);
   const catColor = EVAL_CAT_COLOR.echauffement;
   const lastSeance = data.seances.length ? data.seances[data.seances.length-1] : null;
+  const theorieDateOrder = getTheorieDateOrder(tab.id, activityLabel);
+  const seancesSorted = [...data.seances].sort((a,b)=> theorieDateOrder==='desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
   let starter = null;
   if(revealedStarter && revealedStarter.tabId===tab.id && revealedStarter.activityLabel===activityLabel && (Date.now()-revealedStarter.ts)<REVEAL_DURATION_MS){
     starter = tab.students.find(x=>x.id===revealedStarter.studentId);
@@ -2425,11 +2450,12 @@ function renderTheorie6(tab, act, activityLabel){
       ${data.seances.length?`<button class="btn" style="font-size:1rem;padding:11px 20px;font-weight:800;" onclick="redrawTheorie6('${tab.id}','${escapeAct(activityLabel)}','${lastSeance.id}')">🎲 Tirer au sort</button>
       <span class="starter-drag-handle" title="Glissez cette flèche sur la case de l'élève qui commence, pour n'importe quelle séance" onpointerdown="starterDragStart(event,'${tab.id}','${escapeAct(activityLabel)}')">➡️</span>`:''}
       <button class="btn small" onclick="addTheorieSeance('${tab.id}','${escapeAct(activityLabel)}')">+ Nouvelle séance</button>
+      <button class="btn secondary small" title="Changer l'ordre des colonnes" onclick="toggleTheorieDateOrder('${tab.id}','${escapeAct(activityLabel)}')">${theorieDateOrder==='desc'?'Récent → ancien':'Ancien → récent'}</button>
     </div>
     ${starter?`<div style="text-align:center;font-size:1.3rem;font-weight:800;color:#fff;background:linear-gradient(135deg,${catColor},${shadeColor(catColor,-24)});border-radius:12px;padding:12px;margin-bottom:10px;">➡️ ${escapeHtml(starter.nomPrenom)}</div>`:''}
     <p class="legend" style="border-left-color:${catColor};">➡️ = élève tiré au sort pour commencer. Le bouton "🎲 Tirer au sort" ci-dessus retire au sort pour la séance la plus récente. + = juste · − = ne sait pas · ~ = pas tout juste, pour chaque élève. Note finale = cumul des erreurs (−) sur toutes les séances : 0-1 → TB, 2-3 → S, 4-5 → F, 6+ → I.</p>
     <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
-  data.seances.forEach((se,i)=>{
+  seancesSorted.forEach((se,i)=>{
     html += `<th style="background:${colorForColCat(catColor,i)}">
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameTheorieSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
       <input type="date" value="${se.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateTheorieDate('${tab.id}','${escapeAct(activityLabel)}','${se.id}',this.value)">
@@ -2439,14 +2465,17 @@ function renderTheorie6(tab, act, activityLabel){
   html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
-    data.seances.forEach(se=>{
+    seancesSorted.forEach(se=>{
       const dropAttrs = ` class="starter-drop-target" data-student-id="${s.id}" data-seance-id="${se.id}"`;
       const presence = presenceForDate(act, se.date, s.id);
-      if(presenceBlocksGrading(presence, 'echauffementTheorie')){ html += `<td${dropAttrs}>${renderAttendanceOverride(presence)}</td>`; return; }
+      const presBadge = (presence && presence!=='P')
+        ? `<span class="badge" style="background:${PRESENCE_COLOR[presence].bg};color:${PRESENCE_COLOR[presence].fg};cursor:pointer;margin-right:3px;" title="${PRESENCE_TITLE[presence]} — cliquer pour changer" onclick="event.stopPropagation();cycleTheoriePresence('${tab.id}','${escapeAct(activityLabel)}','${se.date}','${s.id}')">${PRESENCE_LABEL[presence]}</span>`
+        : `<span class="badge" style="background:#e2e8f0;color:#94a3b8;cursor:pointer;margin-right:3px;" title="Présent — cliquer pour signaler un retard/une absence" onclick="event.stopPropagation();cycleTheoriePresence('${tab.id}','${escapeAct(activityLabel)}','${se.date}','${s.id}')">·</span>`;
+      if(presenceBlocksGrading(presence, 'echauffementTheorie')){ html += `<td${dropAttrs}>${presBadge}${renderAttendanceOverride(presence)}</td>`; return; }
       const isStarter = se.starterId===s.id;
       const mark = (se.marks && se.marks[s.id]) || '';
       const col = mark ? MARK_COLOR[mark] : {bg:'#f1f5f9',fg:'#64748b'};
-      html += `<td${dropAttrs}>${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
+      html += `<td${dropAttrs}>${presBadge}${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
     });
     const errs = theorieErrorCount(data.seances, s.id);
     const auto = theorieNote(errs);
@@ -2593,9 +2622,21 @@ function cycleMark(tabId, activityLabel, seanceId, studentId){
 
 /* ---- Évaluation simple : une seule note TB/S/F/I par élève et par séance (colonne par séance, comme l'appel).
    Les critères affichés sont purement informatifs (rappel de ce qu'il faut observer), pas des colonnes séparées. ---- */
+function simpleSortKey_(tabId, activityLabel, key){ return tabId+'::'+activityLabel+'::'+key; }
+function getSimpleDateOrder(tabId, activityLabel, key){
+  return (nav.simpleDateOrderByKey || {})[simpleSortKey_(tabId, activityLabel, key)] || 'asc';
+}
+function toggleSimpleDateOrder(tabId, activityLabel, key){
+  const k = simpleSortKey_(tabId, activityLabel, key);
+  const cur = getSimpleDateOrder(tabId, activityLabel, key);
+  nav.simpleDateOrderByKey = Object.assign({}, nav.simpleDateOrderByKey, {[k]: cur==='desc'?'asc':'desc'});
+  renderApp();
+}
 function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHtml, catColor, allowCriteriaEdit){
   const students = sortedStudents(tab.students);
   const isCustom = key.startsWith('custom_');
+  const dateOrder = getSimpleDateOrder(tab.id, activityLabel, key);
+  const seancesSorted = [...evalObj.seances].sort((a,b)=> dateOrder==='desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
   let html = `<div style="background:${lightTint(catColor)};border-radius:16px;padding:4px;">
   <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${catColor},${shadeColor(catColor,-24)});">
     <div class="toolbar">
@@ -2603,11 +2644,12 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
         ${isCustom?`<button class="icon-btn edit" title="Renommer l'onglet" onclick="renameCustomEval('${tab.id}','${escapeAct(activityLabel)}','${key}')">✎</button><button class="icon-btn danger" title="Supprimer l'onglet" onclick="deleteCustomEval('${tab.id}','${escapeAct(activityLabel)}','${key}')">🗑</button>`:''}
       </h2>
       <button class="btn small" onclick="addSimpleSeance('${tab.id}','${escapeAct(activityLabel)}','${key}')">+ Nouvelle évaluation</button>
+      <button class="btn secondary small" title="Changer l'ordre des colonnes" onclick="toggleSimpleDateOrder('${tab.id}','${escapeAct(activityLabel)}','${key}')">${dateOrder==='desc'?'Récent → ancien':'Ancien → récent'}</button>
     </div>
     <p class="legend" style="border-left-color:${catColor};${allowCriteriaEdit?'margin-bottom:4px;':''}">${legendHtml}</p>
     ${allowCriteriaEdit?renderCriteriaChips(tab.id, activityLabel, key, evalObj.criteria):''}
     <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
-  evalObj.seances.forEach((se,i)=>{
+  seancesSorted.forEach((se,i)=>{
     html += `<th style="background:${colorForColCat(catColor,i)}">
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameSimpleSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
       <input type="date" value="${se.date}" style="width:100px;border:none;background:transparent;color:#fff;font-weight:700;" onchange="updateSimpleDate('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}',this.value)">
@@ -2618,7 +2660,7 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
   html += `</tr></thead><tbody>`;
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
-    evalObj.seances.forEach(se=>{
+    seancesSorted.forEach(se=>{
       const presence = presenceForDate(act, se.date, s.id);
       if(presenceBlocksGrading(presence, key)){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
       const val = se.marks[s.id] || '';
