@@ -2470,7 +2470,7 @@ function renderTheorie6(tab, act, activityLabel){
       const presence = presenceForDate(act, se.date, s.id);
       const presBadge = (presence && presence!=='P')
         ? `<span class="badge" style="background:${PRESENCE_COLOR[presence].bg};color:${PRESENCE_COLOR[presence].fg};cursor:pointer;margin-right:3px;" title="${PRESENCE_TITLE[presence]} — cliquer pour changer" onclick="event.stopPropagation();cycleTheoriePresence('${tab.id}','${escapeAct(activityLabel)}','${se.date}','${s.id}')">${PRESENCE_LABEL[presence]}</span>`
-        : `<span class="badge" style="background:#e2e8f0;color:#94a3b8;cursor:pointer;margin-right:3px;" title="Présent — cliquer pour signaler un retard/une absence" onclick="event.stopPropagation();cycleTheoriePresence('${tab.id}','${escapeAct(activityLabel)}','${se.date}','${s.id}')">·</span>`;
+        : '';
       if(presenceBlocksGrading(presence, 'echauffementTheorie')){ html += `<td${dropAttrs}>${presBadge}${renderAttendanceOverride(presence)}</td>`; return; }
       const isStarter = se.starterId===s.id;
       const mark = (se.marks && se.marks[s.id]) || '';
