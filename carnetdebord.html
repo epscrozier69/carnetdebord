@@ -2137,6 +2137,7 @@ function presenceForDate(act, date, studentId){
 function presenceBlocksGrading(presence, key){
   if(!presence || presence==='P') return false;
   if(key==='echauffementTheorie') return !['RETARD','DP'].includes(presence);
+  if(key==='echauffementPratique') return presence!=='RETARD';
   return true;
 }
 function renderAttendanceOverride(presence){
@@ -2184,12 +2185,6 @@ function cyclePresence(tabId, activityLabel, appelId, studentId){
   const idx = PRESENCE_CYCLE.indexOf(rec.presence);
   rec.presence = PRESENCE_CYCLE[(idx+1)%PRESENCE_CYCLE.length];
   saveState(); renderApp();
-}
-function cycleTheoriePresence(tabId, activityLabel, date, studentId){
-  const act = findActivity(tabId, activityLabel);
-  let ap = act.appels.find(a=>a.date===date);
-  if(!ap){ ap = {id:uid(), date, title:'', records:{}}; act.appels.push(ap); }
-  cyclePresence(tabId, activityLabel, ap.id, studentId);
 }
 function toggleIncident(tabId, activityLabel, appelId, studentId, code){
   const act = findActivity(tabId, activityLabel);
@@ -2468,14 +2463,11 @@ function renderTheorie6(tab, act, activityLabel){
     seancesSorted.forEach(se=>{
       const dropAttrs = ` class="starter-drop-target" data-student-id="${s.id}" data-seance-id="${se.id}"`;
       const presence = presenceForDate(act, se.date, s.id);
-      const presBadge = (presence && presence!=='P')
-        ? `<span class="badge" style="background:${PRESENCE_COLOR[presence].bg};color:${PRESENCE_COLOR[presence].fg};cursor:pointer;margin-right:3px;" title="${PRESENCE_TITLE[presence]} — cliquer pour changer" onclick="event.stopPropagation();cycleTheoriePresence('${tab.id}','${escapeAct(activityLabel)}','${se.date}','${s.id}')">${PRESENCE_LABEL[presence]}</span>`
-        : '';
-      if(presenceBlocksGrading(presence, 'echauffementTheorie')){ html += `<td${dropAttrs}>${presBadge}${renderAttendanceOverride(presence)}</td>`; return; }
+      if(presenceBlocksGrading(presence, 'echauffementTheorie')){ html += `<td${dropAttrs}>${renderAttendanceOverride(presence)}</td>`; return; }
       const isStarter = se.starterId===s.id;
       const mark = (se.marks && se.marks[s.id]) || '';
       const col = mark ? MARK_COLOR[mark] : {bg:'#f1f5f9',fg:'#64748b'};
-      html += `<td${dropAttrs}>${presBadge}${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
+      html += `<td${dropAttrs}>${isStarter?'➡️ ':''}<span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleMark('${tab.id}','${escapeAct(activityLabel)}','${se.id}','${s.id}')">${mark||'·'}</span></td>`;
     });
     const errs = theorieErrorCount(data.seances, s.id);
     const auto = theorieNote(errs);
