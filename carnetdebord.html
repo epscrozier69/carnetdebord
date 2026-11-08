@@ -682,9 +682,16 @@ function scheduleSyncPush(){
 async function pushToAppsScript(force){
   if(!syncConfig) return;
   if(!navigator.onLine){ syncState.pushPending = true; updateSyncStatusUI(); return; }
-  if(!force && lastKnownRemoteSize!=null){
+  if(!force){
     const localSize = roughDataSize(state);
-    if(lastKnownRemoteSize>0 && localSize < lastKnownRemoteSize*0.5){
+    if(lastKnownRemoteSize==null){
+      if(localSize===0){
+        syncState.conflict = {kind:'push', localSize, remoteSize:null};
+        syncState.lastError = 'Impossible de vérifier le contenu actuel du cloud (aucune synchro reçue avec succès sur cet appareil) et cet appareil n\'a aucune donnée locale. L\'envoi a été mis en pause pour ne rien écraser par erreur — ouvrez "🔄 Synchro" pour décider.';
+        updateSyncStatusUI();
+        return;
+      }
+    } else if(lastKnownRemoteSize>0 && localSize < lastKnownRemoteSize*0.5){
       syncState.conflict = {kind:'push', localSize, remoteSize:lastKnownRemoteSize};
       syncState.lastError = 'Les données de cet appareil semblent beaucoup plus petites ('+localSize+' élève(s)) que celles déjà connues sur le cloud ('+lastKnownRemoteSize+'). L\'envoi a été mis en pause pour ne rien écraser — ouvrez "🔄 Synchro" pour décider.';
       updateSyncStatusUI();
@@ -734,7 +741,10 @@ function openSyncModal(){
       </div>`:''}
       ${syncState.conflict?.kind==='push'?`<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:10px;margin-bottom:10px;">
         <b>⚠ Synchro en pause</b><br>
-        Les données de cet appareil ont beaucoup moins d'élèves (${syncState.conflict.localSize}) que celles déjà connues sur le cloud (${syncState.conflict.remoteSize}). Rien n'a été envoyé pour éviter d'écraser des données par erreur.<br><br>
+        ${syncState.conflict.remoteSize==null
+          ? `Cet appareil n'a aucune donnée locale et la dernière synchro avec le cloud n'a pas réussi : impossible de vérifier ce qui y est déjà stocké.`
+          : `Les données de cet appareil ont beaucoup moins d'élèves (${syncState.conflict.localSize}) que celles déjà connues sur le cloud (${syncState.conflict.remoteSize}).`
+        } Rien n'a été envoyé pour éviter d'écraser des données par erreur.<br><br>
         <button class="btn secondary small" onclick="resolveSyncConflict(false)">Récupérer les données du cloud ici (recommandé)</button><br><br>
         <button class="btn danger small" onclick="resolveSyncConflict(true)">Envoyer quand même mes données vers le cloud</button>
       </div>`:''}
