@@ -1312,7 +1312,7 @@ function safeSheetName(name){
   return String(name).replace(/[:\\/?*\[\]]/g,' ').trim().slice(0,31) || 'Feuille';
 }
 function appelCellText(ap, studentId){
-  const rec = ap.records[studentId] || {presence:'P', incidents:[]};
+  const rec = ap.records[studentId] || {presence:'SLASH', incidents:[]};
   let cell = PRESENCE_LABEL[rec.presence] || 'P';
   if(rec.incidents && rec.incidents.length) cell += ' ('+rec.incidents.join(',')+')';
   return cell;
@@ -1935,8 +1935,8 @@ function renderAppel(tab, act, activityLabel){
     <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>${showClasse?`<th style="background:${FIXED_HEADER_BG};cursor:pointer;" title="Cliquer pour changer le tri" onclick="setNav({appelClasseSort:!nav.appelClasseSort})">Classe ${nav.appelClasseSort?'🔽':'A→Z'}</th>`:''}`;
   const taekwondoTab = isTaekwondoTab(tab);
   appelsSorted.forEach((ap,i)=>{
-    const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='P'?1:0), 0);
-    const dpCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'P'}).presence)==='DP'?1:0), 0);
+    const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'SLASH'}).presence)==='P'?1:0), 0);
+    const dpCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'SLASH'}).presence)==='DP'?1:0), 0);
     const isThursdayCol = taekwondoTab && dateDayOfWeek(ap.date)===4;
     const colBg = isThursdayCol ? 'linear-gradient(135deg,#94a3b8,#64748b)' : colorForCol(i);
     html += `<th style="background:${colBg};position:relative;" title="${isThursdayCol?'Séance du jeudi':''}"><div class="col-count" title="Élèves présents à cet appel">${presCount} prés.${dpCount?' + '+dpCount+' DP':''}</div>
@@ -1947,7 +1947,7 @@ function renderAppel(tab, act, activityLabel){
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>${showClasse?`<td>${escapeHtml(s.classe||'')}</td>`:''}`;
     appelsSorted.forEach(ap=>{
-      const rec = ap.records[s.id] || {presence:'P', incidents:[]};
+      const rec = ap.records[s.id] || {presence:'SLASH', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
       const isThursdayCol = taekwondoTab && dateDayOfWeek(ap.date)===4;
       html += `<td${isThursdayCol?' style="background:#e2e8f0;"':''}>
