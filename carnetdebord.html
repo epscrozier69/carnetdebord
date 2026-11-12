@@ -193,7 +193,7 @@ table.data{
   font-size:.82rem;
 }
 table.data th,table.data td{
-  padding:2px 7px;
+  padding:calc(2px + var(--row-extra-pad,0px)) 7px;
   border-bottom:1px solid var(--border);
   border-right:1px solid var(--border);
   white-space:nowrap;
@@ -341,6 +341,7 @@ textarea.rawpaste{width:100%;min-height:140px;font-family:ui-monospace,Consolas,
 .step{flex:1;text-align:center;font-size:.7rem;padding:6px;border-radius:7px;background:var(--primary-light);color:var(--primary);font-weight:800;}
 .step.active{background:linear-gradient(135deg,var(--primary),#6d28d9);color:#fff;}
 .empty{padding:20px;text-align:center;color:var(--ink-soft);}
+.conseil-comment{font-size:.72rem;color:var(--ink-soft);white-space:normal;word-break:break-word;margin-top:3px;text-align:left;line-height:1.25;}
 .recap-level{font-weight:800;padding:3px 10px;border-radius:7px;display:inline-block;box-shadow:0 1px 2px rgba(0,0,0,.08);}
 
 @media (max-width:800px){
@@ -1579,7 +1580,30 @@ function renderApp(){
     if(newScroller){ newScroller.scrollLeft = prevScrollLeft; newScroller.scrollTop = prevScrollTop; }
   }
   saveNav();
+  fitTableRowHeights();
 }
+function fitTableRowHeights(){
+  const scroller = document.querySelector('#section-content .table-scroll');
+  if(!scroller) return;
+  const table = scroller.querySelector('table.data');
+  if(!table) return;
+  const tbody = table.querySelector('tbody');
+  const rowCount = tbody ? tbody.rows.length : 0;
+  table.style.removeProperty('--row-extra-pad');
+  if(!rowCount) return;
+  const rect = scroller.getBoundingClientRect();
+  const available = Math.max(window.innerHeight - rect.top - 14, 120);
+  const natural = table.scrollHeight;
+  if(natural < available){
+    const extraPerRow = Math.min((available - natural) / rowCount / 2, 18);
+    if(extraPerRow > 0.5) table.style.setProperty('--row-extra-pad', extraPerRow.toFixed(1)+'px');
+  }
+}
+let fitTableRowHeightsTimer = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(fitTableRowHeightsTimer);
+  fitTableRowHeightsTimer = setTimeout(fitTableRowHeights, 150);
+});
 
 /* ============================= ELEVES ============================= */
 function findDuplicateNameIssues(tabId){
@@ -2011,8 +2035,8 @@ function renderConseil(tab, act, activityLabel){
         const m = CONSEIL_MENTIONS.find(x=>x.code===code);
         return `<span class="badge" style="background:${m?m.color:'#64748b'};color:#fff;margin:1px;">${code}</span>`;
       }).join('');
-      const commentMark = entry.comment ? `<span title="${escapeHtml(entry.comment)}">💬</span>` : '';
-      html += `<td style="cursor:pointer;" onclick="openConseilEntry('${tab.id}','${escapeAct(activityLabel)}','${p.id}','${s.id}')">${chips||'<span style="color:#cbd5e1;">—</span>'}${commentMark}</td>`;
+      const commentHtml = entry.comment ? `<div class="conseil-comment">${escapeHtml(entry.comment).replace(/\n/g,'<br>')}</div>` : '';
+      html += `<td style="cursor:pointer;white-space:normal;text-align:left;vertical-align:top;max-width:240px;" onclick="openConseilEntry('${tab.id}','${escapeAct(activityLabel)}','${p.id}','${s.id}')"><div style="display:flex;flex-wrap:wrap;gap:2px;">${chips||(entry.comment?'':'<span style="color:#cbd5e1;">—</span>')}</div>${commentHtml}</td>`;
     });
     html += `</tr>`;
   });
@@ -2074,9 +2098,33 @@ function renderConseilEntryModal(){
       <textarea id="conseilComment" rows="4" style="width:100%;resize:vertical;">${escapeHtml(entry.comment||'')}</textarea>
       <div class="modal-foot">
         <button class="btn" onclick="closeConseilModal()">Fermer</button>
+        <button class="btn" onclick="validateConseilEntry()">✔ Valider${(()=>{ const stds=sortedStudents(tab.students); const i=stds.findIndex(x=>x.id===studentId); return (i>=0 && i<stds.length-1) ? ' — élève suivant' : ''; })()}</button>
       </div>
     </div>
   </div>`;
+}
+function validateConseilEntry(){
+  if(!conseilPending) return;
+  const {tabId, activityLabel, periodId, studentId} = conseilPending;
+  const tab = state.tabs[tabId];
+  const act = tab && findActivity(tabId, activityLabel);
+  const period = act && conseilPeriod(act, periodId);
+  if(!tab || !period){ conseilPending=null; closeModal(); return; }
+  const entry = conseilEntry(period, studentId);
+  const ta = document.getElementById('conseilComment');
+  if(ta) entry.comment = ta.value;
+  saveState();
+  const students = sortedStudents(tab.students);
+  const idx = students.findIndex(s=>s.id===studentId);
+  const next = students[idx+1];
+  if(next){
+    conseilPending = {tabId, activityLabel, periodId, studentId: next.id};
+    renderConseilEntryModal();
+  } else {
+    conseilPending = null;
+    closeModal();
+  }
+  renderApp();
 }
 function toggleConseilMentionPending(code){
   if(!conseilPending) return;
