@@ -190,7 +190,7 @@ table.data{
   border-spacing:0;
   width:auto;
   table-layout:auto;
-  font-size:.82rem;
+  font-size:calc(.82rem + var(--row-extra-font,0px));
 }
 table.data th,table.data td{
   padding:calc(2px + var(--row-extra-pad,0px)) 7px;
@@ -204,7 +204,7 @@ table.data th,table.data td{
 table.data th{
   position:sticky;top:0;
   color:#fff;
-  font-size:.74rem;
+  font-size:calc(.74rem + var(--row-extra-font,0px));
   text-transform:uppercase;
   letter-spacing:.3px;
   z-index:3;
@@ -217,7 +217,7 @@ table.data td.num,table.data th.num{
   text-align:center;
   font-weight:700;
   color:var(--ink-soft);
-  font-size:.74rem;
+  font-size:calc(.74rem + var(--row-extra-font,0px));
 }
 table.data th.num{background:var(--primary-dark);color:#fff;z-index:5;}
 table.data tr:nth-child(even) td.num{background:#e8ebf5;}
@@ -231,7 +231,7 @@ table.data td.name,table.data th.name{
   width:auto;
   white-space:nowrap;
   line-height:1.15;
-  font-size:.76rem;
+  font-size:calc(.76rem + var(--row-extra-font,0px));
   box-shadow:2px 0 4px rgba(0,0,0,.04);
 }
 table.data th.name{background:var(--primary-dark);color:#fff;z-index:5;}
@@ -347,7 +347,7 @@ textarea.rawpaste{width:100%;min-height:140px;font-family:ui-monospace,Consolas,
 @media (max-width:800px){
   header.app-header h1{font-size:.92rem;}
   .table-scroll{max-height:60vh;}
-  table.data{font-size:.74rem;}
+  table.data{font-size:calc(.74rem + var(--row-extra-font,0px));}
   .formgrid{grid-template-columns:1fr;}
 }
 </style>
@@ -1590,13 +1590,18 @@ function fitTableRowHeights(){
   const tbody = table.querySelector('tbody');
   const rowCount = tbody ? tbody.rows.length : 0;
   table.style.removeProperty('--row-extra-pad');
+  table.style.removeProperty('--row-extra-font');
   if(!rowCount) return;
   const rect = scroller.getBoundingClientRect();
   const available = Math.max(window.innerHeight - rect.top - 14, 120);
   const natural = table.scrollHeight;
   if(natural < available){
     const extraPerRow = Math.min((available - natural) / rowCount / 2, 18);
-    if(extraPerRow > 0.5) table.style.setProperty('--row-extra-pad', extraPerRow.toFixed(1)+'px');
+    if(extraPerRow > 0.5){
+      table.style.setProperty('--row-extra-pad', extraPerRow.toFixed(1)+'px');
+      const extraFont = Math.min(extraPerRow * 0.3, 5);
+      table.style.setProperty('--row-extra-font', extraFont.toFixed(1)+'px');
+    }
   }
 }
 let fitTableRowHeightsTimer = null;
