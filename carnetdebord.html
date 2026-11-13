@@ -342,6 +342,7 @@ textarea.rawpaste{width:100%;min-height:140px;font-family:ui-monospace,Consolas,
 .step.active{background:linear-gradient(135deg,var(--primary),#6d28d9);color:#fff;}
 .empty{padding:20px;text-align:center;color:var(--ink-soft);}
 .conseil-comment{font-size:.72rem;color:var(--ink-soft);white-space:normal;word-break:break-word;margin-top:3px;text-align:left;line-height:1.25;}
+table.data td.name.name-highlight{background:var(--primary-light)!important;color:var(--primary);font-weight:800;box-shadow:inset 0 0 0 2px var(--primary);}
 .recap-level{font-weight:800;padding:3px 10px;border-radius:7px;display:inline-block;box-shadow:0 1px 2px rgba(0,0,0,.08);}
 
 @media (max-width:800px){
@@ -1581,6 +1582,7 @@ function renderApp(){
   }
   saveNav();
   fitTableRowHeights();
+  applyRowHighlight();
 }
 function fitTableRowHeights(){
   const scroller = document.querySelector('#section-content .table-scroll');
@@ -1589,10 +1591,7 @@ function fitTableRowHeights(){
   if(!table) return;
   const tbody = table.querySelector('tbody');
   const rowCount = tbody ? tbody.rows.length : 0;
-  let pad = 0;
-  if(rowCount>0 && rowCount<=8) pad = 14;
-  else if(rowCount>0 && rowCount<=14) pad = 9;
-  else if(rowCount>0 && rowCount<=22) pad = 4;
+  const pad = rowCount>0 ? Math.min(14, 90/rowCount) : 0;
   if(pad>0){
     table.style.setProperty('--row-extra-pad', pad.toFixed(1)+'px');
     table.style.setProperty('--row-extra-font', Math.min(pad*0.3,5).toFixed(1)+'px');
@@ -1600,6 +1599,25 @@ function fitTableRowHeights(){
     table.style.removeProperty('--row-extra-pad');
     table.style.removeProperty('--row-extra-font');
   }
+}
+let highlightedRow = null;
+document.addEventListener('click', (e)=>{
+  const tr = e.target.closest && e.target.closest('#section-content .table-scroll table.data tbody tr');
+  if(!tr) return;
+  const tbody = tr.parentElement;
+  const index = Array.prototype.indexOf.call(tbody.rows, tr);
+  highlightedRow = {tabId:nav.tabId, section:nav.section, activity:nav.activity, index};
+}, true);
+function applyRowHighlight(){
+  const table = document.querySelector('#section-content .table-scroll table.data');
+  if(!table) return;
+  table.querySelectorAll('td.name.name-highlight').forEach(td=>td.classList.remove('name-highlight'));
+  if(!highlightedRow) return;
+  if(highlightedRow.tabId!==nav.tabId || highlightedRow.section!==nav.section || highlightedRow.activity!==nav.activity) return;
+  const tbody = table.querySelector('tbody');
+  const tr = tbody && tbody.rows[highlightedRow.index];
+  const nameCell = tr && tr.querySelector('td.name');
+  if(nameCell) nameCell.classList.add('name-highlight');
 }
 
 /* ============================= ELEVES ============================= */
