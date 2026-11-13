@@ -1582,53 +1582,25 @@ function renderApp(){
   saveNav();
   fitTableRowHeights();
 }
-let rowFitCache = {key:null, pad:0, font:0};
-function applyRowFit(table, pad, font){
-  if(pad>0){
-    table.style.setProperty('--row-extra-pad', pad.toFixed(1)+'px');
-    table.style.setProperty('--row-extra-font', font.toFixed(1)+'px');
-  } else {
-    table.style.removeProperty('--row-extra-pad');
-    table.style.removeProperty('--row-extra-font');
-  }
-}
-function fitTableRowHeights(forceRecalc){
+function fitTableRowHeights(){
   const scroller = document.querySelector('#section-content .table-scroll');
   if(!scroller) return;
   const table = scroller.querySelector('table.data');
   if(!table) return;
   const tbody = table.querySelector('tbody');
   const rowCount = tbody ? tbody.rows.length : 0;
-  const headRow = table.querySelector('tr');
-  const colCount = headRow ? headRow.children.length : 0;
-  const key = nav.section+'|'+nav.activity+'|'+rowCount+'|'+colCount;
-  if(!forceRecalc && rowFitCache.key===key){
-    applyRowFit(table, rowFitCache.pad, rowFitCache.font);
-    return;
+  let pad = 0;
+  if(rowCount>0 && rowCount<=8) pad = 14;
+  else if(rowCount>0 && rowCount<=14) pad = 9;
+  else if(rowCount>0 && rowCount<=22) pad = 4;
+  if(pad>0){
+    table.style.setProperty('--row-extra-pad', pad.toFixed(1)+'px');
+    table.style.setProperty('--row-extra-font', Math.min(pad*0.3,5).toFixed(1)+'px');
+  } else {
+    table.style.removeProperty('--row-extra-pad');
+    table.style.removeProperty('--row-extra-font');
   }
-  table.style.removeProperty('--row-extra-pad');
-  table.style.removeProperty('--row-extra-font');
-  if(!rowCount){ rowFitCache = {key, pad:0, font:0}; return; }
-  const rect = scroller.getBoundingClientRect();
-  const available = Math.max(window.innerHeight - rect.top - 14, 120);
-  const natural = table.scrollHeight;
-  let pad = 0, font = 0;
-  if(natural < available){
-    const extraPerRow = Math.min((available - natural) / rowCount / 2, 18);
-    if(extraPerRow > 0.5){ pad = extraPerRow; font = Math.min(extraPerRow * 0.3, 5); }
-  }
-  rowFitCache = {key, pad, font};
-  applyRowFit(table, pad, font);
 }
-let fitTableRowHeightsTimer = null;
-let lastViewportWidth = window.innerWidth;
-window.addEventListener('resize', ()=>{
-  const widthChanged = window.innerWidth !== lastViewportWidth;
-  lastViewportWidth = window.innerWidth;
-  if(!widthChanged) return;
-  clearTimeout(fitTableRowHeightsTimer);
-  fitTableRowHeightsTimer = setTimeout(()=>fitTableRowHeights(true), 150);
-});
 
 /* ============================= ELEVES ============================= */
 function findDuplicateNameIssues(tabId){
