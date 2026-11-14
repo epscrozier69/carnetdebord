@@ -1582,7 +1582,7 @@ function renderApp(){
     if(newScroller){ newScroller.scrollLeft = prevScrollLeft; newScroller.scrollTop = prevScrollTop; }
   }
   saveNav();
-  fitTableRowHeights();
+  // fitTableRowHeights(); // désactivé temporairement pour diagnostiquer la vibration au clic
   // applyRowHighlight(); // désactivé temporairement pour diagnostiquer la vibration au clic
 }
 function fitTableRowHeights(){
