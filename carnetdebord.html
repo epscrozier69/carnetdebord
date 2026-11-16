@@ -1582,24 +1582,13 @@ function renderApp(){
     if(newScroller){ newScroller.scrollLeft = prevScrollLeft; newScroller.scrollTop = prevScrollTop; }
   }
   saveNav();
-  // fitTableRowHeights(); // désactivé temporairement pour diagnostiquer la vibration au clic
   // applyRowHighlight(); // désactivé temporairement pour diagnostiquer la vibration au clic
 }
-function fitTableRowHeights(){
-  const scroller = document.querySelector('#section-content .table-scroll');
-  if(!scroller) return;
-  const table = scroller.querySelector('table.data');
-  if(!table) return;
-  const tbody = table.querySelector('tbody');
-  const rowCount = tbody ? tbody.rows.length : 0;
-  const pad = rowCount>0 ? Math.min(14, 90/rowCount) : 0;
-  if(pad>0){
-    table.style.setProperty('--row-extra-pad', pad.toFixed(1)+'px');
-    table.style.setProperty('--row-extra-font', Math.min(pad*0.3,5).toFixed(1)+'px');
-  } else {
-    table.style.removeProperty('--row-extra-pad');
-    table.style.removeProperty('--row-extra-font');
-  }
+function rowFitStyle(rowCount){
+  if(!rowCount) return '';
+  const pad = Math.min(14, 90/rowCount);
+  const font = Math.min(pad*0.3, 5);
+  return ` style="--row-extra-pad:${pad.toFixed(1)}px;--row-extra-font:${font.toFixed(1)}px;"`;
 }
 let highlightedRow = null;
 document.addEventListener('click', (e)=>{
@@ -1654,7 +1643,7 @@ function renderEleves(tab){
       <button class="btn secondary small" onclick="exportClassExcel('${tab.id}')">📊 Exporter Excel</button>
       <button class="btn secondary small" onclick="exportClassPDF('${tab.id}')">🖨 Exporter PDF</button>
     </div>
-    <div class="table-scroll"><table class="data"><thead><tr>
+    <div class="table-scroll"><table class="data"${rowFitStyle(students.length)}><thead><tr>
       <th class="num">N°</th>
       <th class="name">Nom Prénom</th>
       ${tab.fields.map((f,i)=>`<th style="background:${colorForCol(i)};${f.key==='projetAccompagnement'?'max-width:70px;white-space:normal;':''}">${escapeHtml(f.label)}</th>`).join('')}
@@ -1681,7 +1670,7 @@ function renderEleves(tab){
   if(archived.length){
     html += `<h3 style="margin-top:16px;">Élèves archivés / plus présents (${archived.length})</h3>
     <p class="muted">Leurs appels et évaluations déjà enregistrés sont conservés, mais ils n'apparaissent plus dans les tableaux actifs. Un réimport qui retrouve leur nom les réintègre automatiquement.</p>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="name">Nom Prénom</th><th style="background:${FIXED_HEADER_BG}">—</th></tr></thead><tbody>`;
+    <div class="table-scroll"><table class="data"${rowFitStyle(archived.length)}><thead><tr><th class="name">Nom Prénom</th><th style="background:${FIXED_HEADER_BG}">—</th></tr></thead><tbody>`;
     archived.forEach(s=>{
       html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td><td>
         <button class="btn secondary small" onclick="restoreStudent('${tab.id}','${s.id}')">♻️ Réintégrer</button>
@@ -1972,7 +1961,7 @@ function renderAppel(tab, act, activityLabel){
       </h2>
       <button class="btn secondary small" title="Changer l'ordre des colonnes (pour ce tableau uniquement)" onclick="toggleAppelDateOrder('${tab.id}','${escapeAct(activityLabel)}')">${dateOrder==='desc'?'Récent → ancien':'Ancien → récent'}</button>
     </div>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>${showClasse?`<th style="background:${FIXED_HEADER_BG};cursor:pointer;" title="Cliquer pour changer le tri" onclick="setNav({appelClasseSort:!nav.appelClasseSort})">Classe ${nav.appelClasseSort?'🔽':'A→Z'}</th>`:''}`;
+    <div class="table-scroll"><table class="data"${rowFitStyle(students.length)}><thead><tr><th class="num">N°</th><th class="name">Élève</th>${showClasse?`<th style="background:${FIXED_HEADER_BG};cursor:pointer;" title="Cliquer pour changer le tri" onclick="setNav({appelClasseSort:!nav.appelClasseSort})">Classe ${nav.appelClasseSort?'🔽':'A→Z'}</th>`:''}`;
   const taekwondoTab = isTaekwondoTab(tab);
   appelsSorted.forEach((ap,i)=>{
     const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'SLASH'}).presence)==='P'?1:0), 0);
@@ -2035,7 +2024,7 @@ function renderConseil(tab, act, activityLabel){
       <h2 style="margin:0;flex:1;">📋 Conseil de classe — ${escapeHtml(tab.name)}</h2>
       <button class="btn small" onclick="addConseilPeriod('${tab.id}','${escapeAct(activityLabel)}')">+ Période</button>
     </div>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="num">N°</th><th class="name">Élève</th>`;
+    <div class="table-scroll"><table class="data"${rowFitStyle(students.length)}><thead><tr><th class="num">N°</th><th class="name">Élève</th>`;
   periods.forEach((p,i)=>{
     html += `<th style="background:${colorForCol(i)};position:relative;padding:4px 46px 4px 8px;">${escapeHtml(p.title)}
       <button class="th-del" style="right:22px;background:#2563eb;" title="Renommer cette période" onclick="renameConseilPeriod('${tab.id}','${escapeAct(activityLabel)}','${p.id}')">✎</button>
@@ -2523,7 +2512,7 @@ function renderTheorie6(tab, act, activityLabel){
     </div>
     ${starter?`<div style="text-align:center;font-size:1.3rem;font-weight:800;color:#fff;background:linear-gradient(135deg,${catColor},${shadeColor(catColor,-24)});border-radius:12px;padding:12px;margin-bottom:10px;">➡️ ${escapeHtml(starter.nomPrenom)}</div>`:''}
     <p class="legend" style="border-left-color:${catColor};">➡️ = élève tiré au sort pour commencer. Le bouton "🎲 Tirer au sort" ci-dessus retire au sort pour la séance la plus récente. + = juste · − = ne sait pas · ~ = pas tout juste, pour chaque élève. Note finale = cumul des erreurs (−) sur toutes les séances : 0-1 → TB, 2-3 → S, 4-5 → F, 6+ → I.</p>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
+    <div class="table-scroll"><table class="data"${rowFitStyle(students.length)}><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
   seancesSorted.forEach((se,i)=>{
     html += `<th style="background:${colorForColCat(catColor,i)}">
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameTheorieSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
@@ -2714,7 +2703,7 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
     </div>
     <p class="legend" style="border-left-color:${catColor};${allowCriteriaEdit?'margin-bottom:4px;':''}">${legendHtml}</p>
     ${allowCriteriaEdit?renderCriteriaChips(tab.id, activityLabel, key, evalObj.criteria):''}
-    <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
+    <div class="table-scroll"><table class="data"${rowFitStyle(students.length)}><thead><tr><th class="num" style="background:${catColor}">N°</th><th class="name" style="background:${catColor}">Élève</th>`;
   seancesSorted.forEach((se,i)=>{
     html += `<th style="background:${colorForColCat(catColor,i)}">
       <div style="font-weight:800;font-size:.68rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" title="${escapeHtml(se.title||'Cliquer pour ajouter un titre')}" onclick="renameSimpleSeanceTitle('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}')">${se.title?escapeHtml(se.title):'+ titre'}</div>
@@ -2864,7 +2853,7 @@ function renderRecap(tab, act, activityLabel){
   const recapColor = EVAL_CAT_COLOR.recap;
   let html = `<div style="background:${lightTint(recapColor)};border-radius:16px;padding:4px;">
   <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${recapColor},${shadeColor(recapColor,-24)});"><h2>Récapitulatif — ${escapeHtml(tab.name)} — ${escapeHtml(activityLabel)}</h2>
-    <div class="table-scroll"><table class="data"><thead><tr><th class="num" style="background:${recapColor}">N°</th><th class="name" style="background:${recapColor}">Élève</th>
+    <div class="table-scroll"><table class="data"${rowFitStyle(students.length)}><thead><tr><th class="num" style="background:${recapColor}">N°</th><th class="name" style="background:${recapColor}">Élève</th>
     ${cols.map(c=>`<th style="background:linear-gradient(135deg, ${c.color}, ${shadeColor(c.color,-16)})">${escapeHtml(c.label)}</th>`).join('')}
     </tr></thead><tbody>`;
   students.forEach((s,idx)=>{
