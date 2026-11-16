@@ -1582,7 +1582,6 @@ function renderApp(){
     if(newScroller){ newScroller.scrollLeft = prevScrollLeft; newScroller.scrollTop = prevScrollTop; }
   }
   saveNav();
-  // applyRowHighlight(); // désactivé temporairement pour diagnostiquer la vibration au clic
 }
 function rowFitStyle(rowCount){
   if(!rowCount) return '';
@@ -1598,16 +1597,9 @@ document.addEventListener('click', (e)=>{
   const index = Array.prototype.indexOf.call(tbody.rows, tr);
   highlightedRow = {tabId:nav.tabId, section:nav.section, activity:nav.activity, index};
 }, true);
-function applyRowHighlight(){
-  const table = document.querySelector('#section-content .table-scroll table.data');
-  if(!table) return;
-  table.querySelectorAll('td.name.name-highlight').forEach(td=>td.classList.remove('name-highlight'));
-  if(!highlightedRow) return;
-  if(highlightedRow.tabId!==nav.tabId || highlightedRow.section!==nav.section || highlightedRow.activity!==nav.activity) return;
-  const tbody = table.querySelector('tbody');
-  const tr = tbody && tbody.rows[highlightedRow.index];
-  const nameCell = tr && tr.querySelector('td.name');
-  if(nameCell) nameCell.classList.add('name-highlight');
+function nameCellClass(idx){
+  if(highlightedRow && highlightedRow.tabId===nav.tabId && highlightedRow.section===nav.section && highlightedRow.activity===nav.activity && highlightedRow.index===idx) return 'name name-highlight';
+  return 'name';
 }
 
 /* ============================= ELEVES ============================= */
@@ -1652,7 +1644,7 @@ function renderEleves(tab){
     </tr></thead><tbody>`;
   const todayIso = todayISO();
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    html += `<tr><td class="num">${idx+1}</td><td class="${nameCellClass(idx)}">${escapeHtml(s.nomPrenom)}</td>`;
     tab.fields.forEach(f=>{ html += `<td${f.key==='projetAccompagnement'?' style="max-width:70px;white-space:normal;"':''}>${f.key==='sexe'?sexeIcon(s[f.key]):escapeHtml(s[f.key]||'')}</td>`; });
     const allDisp = s.dispenses||[];
     const match = activeDispenseAnywhere(s, tab.id, todayIso);
@@ -1974,7 +1966,7 @@ function renderAppel(tab, act, activityLabel){
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Récap<br><span style="font-size:.65rem;font-weight:600;opacity:.85;">${appelsSorted.length} séance${appelsSorted.length>1?'s':''} faite${appelsSorted.length>1?'s':''}</span></th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>${showClasse?`<td>${escapeHtml(s.classe||'')}</td>`:''}`;
+    html += `<tr><td class="num">${idx+1}</td><td class="${nameCellClass(idx)}">${escapeHtml(s.nomPrenom)}</td>${showClasse?`<td>${escapeHtml(s.classe||'')}</td>`:''}`;
     appelsSorted.forEach(ap=>{
       const rec = ap.records[s.id] || {presence:'SLASH', incidents:[]};
       const col = PRESENCE_COLOR[rec.presence];
@@ -2033,7 +2025,7 @@ function renderConseil(tab, act, activityLabel){
   });
   html += `</tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    html += `<tr><td class="num">${idx+1}</td><td class="${nameCellClass(idx)}">${escapeHtml(s.nomPrenom)}</td>`;
     periods.forEach(p=>{
       const entry = p.entries[s.id] || {mentions:[], comment:''};
       const chips = entry.mentions.map(code=>{
@@ -2522,7 +2514,7 @@ function renderTheorie6(tab, act, activityLabel){
   });
   html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th></tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    html += `<tr><td class="num">${idx+1}</td><td class="${nameCellClass(idx)}">${escapeHtml(s.nomPrenom)}</td>`;
     seancesSorted.forEach(se=>{
       const dropAttrs = ` class="starter-drop-target" data-student-id="${s.id}" data-seance-id="${se.id}"`;
       const presence = presenceForDate(act, se.date, s.id);
@@ -2714,7 +2706,7 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
   html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th>`;
   html += `</tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    html += `<tr><td class="num">${idx+1}</td><td class="${nameCellClass(idx)}">${escapeHtml(s.nomPrenom)}</td>`;
     seancesSorted.forEach(se=>{
       const presence = presenceForDate(act, se.date, s.id);
       if(presenceBlocksGrading(presence, key)){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
@@ -2857,7 +2849,7 @@ function renderRecap(tab, act, activityLabel){
     ${cols.map(c=>`<th style="background:linear-gradient(135deg, ${c.color}, ${shadeColor(c.color,-16)})">${escapeHtml(c.label)}</th>`).join('')}
     </tr></thead><tbody>`;
   students.forEach((s,idx)=>{
-    html += `<tr><td class="num">${idx+1}</td><td class="name">${escapeHtml(s.nomPrenom)}</td>`;
+    html += `<tr><td class="num">${idx+1}</td><td class="${nameCellClass(idx)}">${escapeHtml(s.nomPrenom)}</td>`;
     cols.forEach(c=>{
       const v = c.get(s);
       if(!v){ html += `<td>·</td>`; return; }
