@@ -945,7 +945,7 @@ const FIELD_GUESSES = {
 /* ============================= IMPORT FLOW ============================= */
 function openImportModal(){
   const cfg = loadImportScriptConfig() || {};
-  importState = {step:1, type:'CLASSES', raw:'', headers:[], rows:[], mapping:{}, classeValues:[], selectedClasses:new Set(),
+  importState = {step:1, kind:'CLASSES', type:'CLASSES', raw:'', headers:[], rows:[], mapping:{}, classeValues:[], selectedClasses:new Set(),
     scriptUrl: cfg.url||'', scriptKey: cfg.key||'', sheetTab: IMPORT_TYPES.CLASSES.sheetTab, sheetStatus:'', groupName:''};
   renderImportModal();
 }
@@ -962,32 +962,41 @@ function renderImportModal(){
       <div class="steps">
         <div class="step active">1. Source</div><div class="step">2. Colonnes</div><div class="step">3. Sélection</div><div class="step">4. Import</div>
       </div>
+      <div class="formgrid" style="grid-template-columns:1fr 1fr;">
+        <button type="button" class="btn ${st.kind==='CLASSES'?'':'ghost'}" onclick="setImportKind('CLASSES')">📋 Liste des élèves (par classe)</button>
+        <button type="button" class="btn ${st.kind==='AUTRE'?'':'ghost'}" onclick="setImportKind('AUTRE')">🏷️ Autre groupe / activité</button>
+      </div>
+      ${st.kind==='AUTRE' ? `
       <div class="formgrid">
         <div>
-          <label>Type de données à importer</label>
+          <label>Quel groupe ?</label>
           <select id="impType">
-            ${Object.entries(IMPORT_TYPES).map(([k,v])=>`<option value="${k}" ${k===st.type?'selected':''}>${escapeHtml(v.label)}</option>`).join('')}
+            ${Object.entries(IMPORT_TYPES).filter(([k])=>k!=='CLASSES').map(([k,v])=>`<option value="${k}" ${k===st.type?'selected':''}>${escapeHtml(v.label)}</option>`).join('')}
           </select>
         </div>
         ${!IMPORT_TYPES[st.type].perClasse ? `<div>
           <label>Nom du groupe</label>
           <input id="impGroupName" value="${escapeHtml(st.groupName!=null && st.groupName!=='' ? st.groupName : (IMPORT_TYPES[st.type].groupName||''))}" placeholder="Ex : Danse, Musculation...">
         </div>` : ''}
-      </div>
-      <h3>Option A — Charger directement depuis Google Sheets (via votre script, classeur en accès limité)</h3>
-      <div class="formgrid">
-        <div><label>URL du script (se termine par /exec)</label><input id="impScriptUrl" value="${escapeHtml(st.scriptUrl)}" placeholder="https://script.google.com/macros/s/.../exec"></div>
-        <div><label>Clé secrète du script</label><input id="impScriptKey" value="${escapeHtml(st.scriptKey)}"></div>
-        <div><label>Nom de l'onglet du classeur</label><input id="impSheetTab" value="${escapeHtml(st.sheetTab)}"></div>
-      </div>
-      <div class="toolbar">
-        <button class="btn secondary small" onclick="fetchFromSheet()">⇩ Charger depuis Google Sheets</button>
-        <span class="muted" id="impSheetStatus">${escapeHtml(st.sheetStatus||'')}</span>
-      </div>
-      <h3 style="margin-top:14px;">Option B — Copier-coller ou fichier CSV</h3>
-      <p class="muted">Ouvrez l'onglet correspondant dans votre Google Sheet, sélectionnez toutes les cellules (Ctrl+A) puis copiez (Ctrl+C), et collez ci-dessous. Vous pouvez aussi déposer un fichier CSV exporté depuis Google Sheets (Fichier → Télécharger → .csv).</p>
-      <input type="file" id="impFile" accept=".csv,.tsv,.txt" onchange="handleImportFile(event)">
-      <textarea class="rawpaste" id="impRaw" placeholder="Collez ici les données copiées depuis Google Sheets...">${escapeHtml(st.raw)}</textarea>
+      </div>` : ''}
+      <details ${(!st.scriptUrl || !st.scriptKey || /⚠️/.test(st.sheetStatus||'')) ? 'open' : ''} style="margin-top:14px;">
+        <summary style="cursor:pointer;font-weight:600;color:var(--primary);">⚙️ Chargement depuis Google Sheets ${st.scriptUrl && st.scriptKey ? '(déjà configuré)' : ''}</summary>
+        <div class="formgrid" style="margin-top:8px;">
+          <div><label>URL du script (se termine par /exec)</label><input id="impScriptUrl" value="${escapeHtml(st.scriptUrl)}" placeholder="https://script.google.com/macros/s/.../exec"></div>
+          <div><label>Clé secrète du script</label><input id="impScriptKey" value="${escapeHtml(st.scriptKey)}"></div>
+          <div><label>Nom de l'onglet du classeur</label><input id="impSheetTab" value="${escapeHtml(st.sheetTab)}"></div>
+        </div>
+        <div class="toolbar">
+          <button class="btn secondary small" onclick="fetchFromSheet()">⇩ Recharger depuis Google Sheets</button>
+        </div>
+      </details>
+      <p class="muted" id="impSheetStatus" style="margin-top:6px;">${escapeHtml(st.sheetStatus||'')}</p>
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer;font-weight:600;color:var(--primary);">📋 Autre méthode : copier-coller ou fichier CSV</summary>
+        <p class="muted">Ouvrez l'onglet correspondant dans votre Google Sheet, sélectionnez toutes les cellules (Ctrl+A) puis copiez (Ctrl+C), et collez ci-dessous. Vous pouvez aussi déposer un fichier CSV exporté depuis Google Sheets (Fichier → Télécharger → .csv).</p>
+        <input type="file" id="impFile" accept=".csv,.tsv,.txt" onchange="handleImportFile(event)">
+        <textarea class="rawpaste" id="impRaw" placeholder="Collez ici les données copiées depuis Google Sheets...">${escapeHtml(st.raw)}</textarea>
+      </details>
       <div class="modal-foot">
         <button class="btn ghost" onclick="closeModal()">Annuler</button>
         <button class="btn" onclick="importStep1Next()">Analyser →</button>
@@ -1046,7 +1055,8 @@ function renderImportModal(){
     </div>
   </div>`;
   if(st.step===1){
-    document.getElementById('impType').onchange = e=>{
+    const impTypeEl = document.getElementById('impType');
+    if(impTypeEl) impTypeEl.onchange = e=>{
       st.raw = document.getElementById('impRaw').value;
       st.scriptUrl = document.getElementById('impScriptUrl').value;
       st.scriptKey = document.getElementById('impScriptKey').value;
@@ -1059,6 +1069,22 @@ function renderImportModal(){
     };
     if(st.scriptUrl && st.scriptKey && st.sheetTab) fetchFromSheet();
   }
+}
+function setImportKind(kind){
+  const st = importState;
+  st.raw = document.getElementById('impRaw').value;
+  st.scriptUrl = document.getElementById('impScriptUrl').value;
+  st.scriptKey = document.getElementById('impScriptKey').value;
+  st.kind = kind;
+  if(kind==='CLASSES'){
+    st.type = 'CLASSES';
+  } else if(IMPORT_TYPES[st.type].perClasse){
+    st.type = 'AS_SP';
+  }
+  st.sheetTab = IMPORT_TYPES[st.type].sheetTab;
+  st.groupName = IMPORT_TYPES[st.type].perClasse ? '' : (IMPORT_TYPES[st.type].groupName||'');
+  st.raw=''; st.sheetStatus='';
+  renderImportModal();
 }
 async function fetchFromSheet(){
   const scriptUrl = document.getElementById('impScriptUrl').value.trim();
