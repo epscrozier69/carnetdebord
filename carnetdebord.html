@@ -1057,6 +1057,7 @@ function renderImportModal(){
       if(!IMPORT_TYPES[st.type].perClasse && !st.groupName) st.groupName = IMPORT_TYPES[st.type].groupName || '';
       renderImportModal();
     };
+    if(st.scriptUrl && st.scriptKey && st.sheetTab) fetchFromSheet();
   }
 }
 async function fetchFromSheet(){
@@ -1076,7 +1077,7 @@ async function fetchFromSheet(){
     const data = await resp.json();
     if(data.error){
       const msg = data.error==='unauthorized' ? 'clé secrète incorrecte'
-        : data.error==='sheet_not_found' ? "onglet introuvable dans le classeur"
+        : data.error==='sheet_not_found' ? "onglet introuvable. Onglets disponibles dans ce classeur : "+((data.available||[]).join(', ')||'(aucun)')
         : data.error;
       throw new Error(msg);
     }
