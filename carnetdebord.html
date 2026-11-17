@@ -466,7 +466,9 @@ const IMPORT_TYPES = {
   TKW:{label:'Taekwondo', fields:TKW_FIELDS, perClasse:false, groupName:'Taekwondo', sheetTab:'TKW'},
   GROUPE_PERSO:{label:'Autre groupe (nom personnalisé)', fields:CLASS_FIELDS, perClasse:false, groupName:'', sheetTab:''}
 };
-const DEFAULT_SHEET_ID = '1-MtVqASlFvhcm9xaAksEO9vrEgc8wlrnXV8CcaQmlqg';
+const IMPORT_SCRIPT_CONFIG_KEY = 'cdb_import_appscript_v1';
+function loadImportScriptConfig(){ try{ const raw = localStorage.getItem(IMPORT_SCRIPT_CONFIG_KEY); return raw?JSON.parse(raw):null; }catch(e){ return null; } }
+function saveImportScriptConfig(cfg){ try{ localStorage.setItem(IMPORT_SCRIPT_CONFIG_KEY, JSON.stringify(cfg)); }catch(e){} }
 
 const EVAL_CATS = [
   {key:'echauffement', label:'Échauffement'},
@@ -942,8 +944,9 @@ const FIELD_GUESSES = {
 
 /* ============================= IMPORT FLOW ============================= */
 function openImportModal(){
+  const cfg = loadImportScriptConfig() || {};
   importState = {step:1, type:'CLASSES', raw:'', headers:[], rows:[], mapping:{}, classeValues:[], selectedClasses:new Set(),
-    sheetId: DEFAULT_SHEET_ID, sheetTab: IMPORT_TYPES.CLASSES.sheetTab, sheetStatus:'', groupName:''};
+    scriptUrl: cfg.url||'', scriptKey: cfg.key||'', sheetTab: IMPORT_TYPES.CLASSES.sheetTab, sheetStatus:'', groupName:''};
   renderImportModal();
 }
 function closeModal(){
@@ -971,9 +974,10 @@ function renderImportModal(){
           <input id="impGroupName" value="${escapeHtml(st.groupName!=null && st.groupName!=='' ? st.groupName : (IMPORT_TYPES[st.type].groupName||''))}" placeholder="Ex : Danse, Musculation...">
         </div>` : ''}
       </div>
-      <h3>Option A — Charger directement depuis Google Sheets (fichier accessible à tous)</h3>
+      <h3>Option A — Charger directement depuis Google Sheets (via votre script, classeur en accès limité)</h3>
       <div class="formgrid">
-        <div><label>Identifiant du classeur (dans l'URL, après /d/)</label><input id="impSheetId" value="${escapeHtml(st.sheetId)}"></div>
+        <div><label>URL du script (se termine par /exec)</label><input id="impScriptUrl" value="${escapeHtml(st.scriptUrl)}" placeholder="https://script.google.com/macros/s/.../exec"></div>
+        <div><label>Clé secrète du script</label><input id="impScriptKey" value="${escapeHtml(st.scriptKey)}"></div>
         <div><label>Nom de l'onglet du classeur</label><input id="impSheetTab" value="${escapeHtml(st.sheetTab)}"></div>
       </div>
       <div class="toolbar">
@@ -1044,7 +1048,8 @@ function renderImportModal(){
   if(st.step===1){
     document.getElementById('impType').onchange = e=>{
       st.raw = document.getElementById('impRaw').value;
-      st.sheetId = document.getElementById('impSheetId').value;
+      st.scriptUrl = document.getElementById('impScriptUrl').value;
+      st.scriptKey = document.getElementById('impScriptKey').value;
       const groupNameInput = document.getElementById('impGroupName');
       if(groupNameInput) st.groupName = groupNameInput.value.trim();
       st.type = e.target.value;
@@ -1054,70 +1059,36 @@ function renderImportModal(){
     };
   }
 }
-let gvizReqCounter = 0;
-function fetchFromSheet(){
-  const id = document.getElementById('impSheetId').value.trim();
+async function fetchFromSheet(){
+  const scriptUrl = document.getElementById('impScriptUrl').value.trim();
+  const scriptKey = document.getElementById('impScriptKey').value.trim();
   const tabName = document.getElementById('impSheetTab').value.trim();
-  importState.sheetId = id;
+  importState.scriptUrl = scriptUrl;
+  importState.scriptKey = scriptKey;
   importState.sheetTab = tabName;
+  saveImportScriptConfig({url:scriptUrl, key:scriptKey});
   const statusEl = document.getElementById('impSheetStatus');
-  if(!id || !tabName){ statusEl.textContent = "Indiquez l'identifiant du classeur et le nom de l'onglet."; return; }
+  if(!scriptUrl || !tabName){ statusEl.textContent = "Indiquez l'URL du script et le nom de l'onglet."; return; }
   statusEl.textContent = '⏳ Chargement depuis Google Sheets...';
-  gvizReqCounter++;
-  const cbName = '__cdbGviz_'+gvizReqCounter;
-  let settled = false;
-  let scriptEl = null;
-  function cleanup(){
-    try{ delete window[cbName]; }catch(e){ window[cbName] = undefined; }
-    if(scriptEl && scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
-  }
-  const timeoutId = setTimeout(function(){
-    if(settled) return; settled = true;
-    statusEl.textContent = "⚠️ Délai dépassé. Vérifiez le nom exact de l'onglet (respectez la casse et les espaces), ou utilisez le copier-coller ci-dessous.";
-    cleanup();
-  }, 15000);
-  window[cbName] = function(resp){
-    if(settled) return; settled = true;
-    clearTimeout(timeoutId);
-    try{
-      if(!resp || resp.status==='error'){
-        const msg = (resp && resp.errors && resp.errors[0] && resp.errors[0].detailed_message) || "onglet introuvable ou accès refusé";
-        throw new Error(msg);
-      }
-      const table = resp.table;
-      let headers = table.cols.map(c=> (c.label && String(c.label).trim()) ? c.label : (c.id||''));
-      let rows = table.rows.map(r=> (r.c||[]).map(cell=>{
-        if(!cell) return '';
-        if(cell.f!=null) return String(cell.f);
-        if(cell.v==null) return '';
-        return String(cell.v);
-      }));
-      // Si Google n'a pas détecté de vraie ligne d'en-tête (colonnes nommées A, B, C...),
-      // les vrais titres de colonnes se trouvent alors dans la 1ère ligne de données.
-      const looksGeneric = headers.every(h=> /^[A-Z]{1,2}$/.test(h));
-      if(looksGeneric && rows.length){
-        headers = rows[0];
-        rows = rows.slice(1);
-      }
-      const raw = [headers].concat(rows).map(r=> r.map(v=> String(v).replace(/\t/g,' ')).join('\t')).join('\n');
-      importState.raw = raw;
-      document.getElementById('impRaw').value = raw;
-      statusEl.textContent = '✅ '+rows.length+' ligne(s) chargée(s) depuis "'+tabName+'". Colonnes détectées : '+headers.join(', ');
-    }catch(err){
-      statusEl.textContent = '⚠️ '+err.message+". Vérifiez le nom exact de l'onglet, ou utilisez le copier-coller ci-dessous.";
+  try{
+    const url = scriptUrl+'?sheet='+encodeURIComponent(tabName)+'&key='+encodeURIComponent(scriptKey)+'&t='+Date.now();
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if(data.error){
+      const msg = data.error==='unauthorized' ? 'clé secrète incorrecte'
+        : data.error==='sheet_not_found' ? "onglet introuvable dans le classeur"
+        : data.error;
+      throw new Error(msg);
     }
-    cleanup();
-  };
-  const url = 'https://docs.google.com/spreadsheets/d/'+encodeURIComponent(id)+'/gviz/tq?tqx=out:json;responseHandler:'+cbName+'&sheet='+encodeURIComponent(tabName)+'&headers=1';
-  scriptEl = document.createElement('script');
-  scriptEl.src = url;
-  scriptEl.onerror = function(){
-    if(settled) return; settled = true;
-    clearTimeout(timeoutId);
-    statusEl.textContent = "⚠️ Impossible de contacter Google Sheets (connexion, ou classeur non accessible). Utilisez le copier-coller ci-dessous.";
-    cleanup();
-  };
-  document.body.appendChild(scriptEl);
+    const headers = data.headers||[];
+    const rows = data.rows||[];
+    const raw = [headers].concat(rows).map(r=> r.map(v=> String(v).replace(/\t/g,' ')).join('\t')).join('\n');
+    importState.raw = raw;
+    document.getElementById('impRaw').value = raw;
+    statusEl.textContent = '✅ '+rows.length+' ligne(s) chargée(s) depuis "'+tabName+'". Colonnes détectées : '+headers.join(', ');
+  }catch(err){
+    statusEl.textContent = '⚠️ '+err.message+". Vérifiez l'URL du script, la clé secrète et le nom de l'onglet, ou utilisez le copier-coller ci-dessous.";
+  }
 }
 function renderMappingRow(key,label){
   const st = importState;
