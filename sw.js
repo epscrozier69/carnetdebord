@@ -1,4 +1,4 @@
-const CACHE_NAME = 'carnetdebord-cache-v1';
+const CACHE_NAME = 'carnetdebord-cache-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -16,7 +16,7 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   if (req.url.includes('script.google.com')) return;
   event.respondWith(
-    fetch(req).then((res) => {
+    fetch(req, { cache: 'no-store' }).then((res) => {
       if (res && res.ok) {
         const copy = res.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
