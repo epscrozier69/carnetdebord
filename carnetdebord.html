@@ -942,13 +942,52 @@ function isNatationJourTab(tab){
   const n = normalize(tab.name);
   return n.includes('natation') && (n.includes('lundi') || n.includes('vendredi'));
 }
+function natationDefaultAttitude(){ return {criteria:['Ponctuel','Respectueux','Attentif','Volontaire','Sécuritaire','Tenue adaptée'], seances:[]}; }
+function natationDefaultImplication(){ return {criteria:['Implication'], seances:[]}; }
+function ensureNatationTrimestre1(ev){
+  if(!ev.natationTrimestres) ev.natationTrimestres = {};
+  if(!ev.natationTrimestreOrder) ev.natationTrimestreOrder = [];
+  if(!ev.natationTrimestres.t1){
+    ev.natationTrimestres.t1 = {
+      id:'t1', label:'Trimestre 1',
+      attitude: ev.attitude || natationDefaultAttitude(),
+      implication: ev.implication || natationDefaultImplication()
+    };
+  }
+  if(!ev.natationTrimestreOrder.includes('t1')) ev.natationTrimestreOrder.unshift('t1');
+}
+function addNatationTrimestre(tabId, activityLabel){
+  const act = findActivity(tabId, activityLabel);
+  const ev = act.evaluations;
+  ensureNatationTrimestre1(ev);
+  const label = prompt('Titre du nouveau trimestre :', 'Trimestre '+(ev.natationTrimestreOrder.length+1));
+  if(!label) return;
+  const id = 'tr_'+uid();
+  ev.natationTrimestres[id] = {id, label, attitude: natationDefaultAttitude(), implication: natationDefaultImplication()};
+  ev.natationTrimestreOrder.push(id);
+  saveState();
+  setNav({evalCat:id, evalSubCat:'attitude', evalSkill:null});
+}
 function ensureNatationCustomEvals(ev){
   if(!ev || !ev.custom) return;
+  ensureNatationTrimestre1(ev);
   NATATION_JOUR_CUSTOM_EVALS.forEach(def=>{
     if(!ev.custom.some(c=>c.id===def.id)){
-      ev.custom.push({id:def.id, title:def.title, criteria:def.criteria.slice(), seances:[]});
+      ev.custom.push({id:def.id, title:def.title, criteria:def.criteria.slice(), seances:[], trimestre:'t1'});
     }
   });
+  ev.custom.forEach(c=>{ if(!c.trimestre) c.trimestre='t1'; });
+}
+function addNatationSkillEval(tabId, activityLabel, trimestreId){
+  const title = prompt("Titre de la nouvelle évaluation :");
+  if(!title) return;
+  const critRaw = prompt('Barème / critères informatifs (séparés par des virgules) :','TB : ..., S : ..., F : ..., I : ...');
+  const criteria = (critRaw||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const act = findActivity(tabId, activityLabel);
+  const id = 'custom_'+uid();
+  act.evaluations.custom.push({id, title, criteria, seances:[], trimestre:trimestreId});
+  saveState();
+  setNav({evalSkill:id});
 }
 function appelShowsClasseColumn(tab){
   if(tab.kind==='classe') return false;
@@ -2375,9 +2414,59 @@ function renderActivityTheorie(tab, act, activityLabel){
   return html;
 }
 
-function renderEvaluations(tab, act, activityLabel){
+function renderNatationEvaluations(tab, act, activityLabel){
   const ev = act.evaluations;
-  const hideEchauffement = (tab.niveau==='6' && activityLabel==='Natation') || isNatationJourTab(tab);
+  ensureNatationTrimestre1(ev);
+  const trimestres = ev.natationTrimestreOrder.map(id=>ev.natationTrimestres[id]).filter(Boolean);
+  if(!nav.evalCat || (nav.evalCat!=='recap' && !trimestres.some(t=>t.id===nav.evalCat))) nav.evalCat = trimestres[0].id;
+  let html = `<div class="tabbar sub3">`;
+  trimestres.forEach(t=>{
+    html += `<button class="${nav.evalCat===t.id?'active':''}" style="--cat:${EVAL_CAT_COLOR.echauffement}" onclick="setNav({evalCat:'${t.id}', evalSubCat:'attitude', evalSkill:null})">${escapeHtml(t.label)}</button>`;
+  });
+  html += `<button class="add" onclick="addNatationTrimestre('${tab.id}','${escapeAct(activityLabel)}')">+ Trimestre</button>`;
+  html += `<button class="${nav.evalCat==='recap'?'active':''}" style="--cat:${EVAL_CAT_COLOR.recap}" onclick="setNav({evalCat:'recap'})">🏁 Récap</button>`;
+  html += `</div>`;
+
+  if(nav.evalCat==='recap') return html + renderRecap(tab, act, activityLabel);
+
+  const trimestre = ev.natationTrimestres[nav.evalCat];
+  if(!nav.evalSubCat || !['attitude','implication','capacitesPerf'].includes(nav.evalSubCat)) nav.evalSubCat = 'attitude';
+  html += `<div class="tabbar sub3">
+    <button class="${nav.evalSubCat==='attitude'?'active':''}" style="--cat:${EVAL_CAT_COLOR.attitude}" onclick="setNav({evalSubCat:'attitude'})">Attitude</button>
+    <button class="${nav.evalSubCat==='implication'?'active':''}" style="--cat:${EVAL_CAT_COLOR.implication}" onclick="setNav({evalSubCat:'implication'})">Implication</button>
+    <button class="${nav.evalSubCat==='capacitesPerf'?'active':''}" style="--cat:${EVAL_CAT_COLOR.capacites}" onclick="setNav({evalSubCat:'capacitesPerf'})">Capacités/Perf</button>
+  </div>`;
+
+  if(nav.evalSubCat==='attitude'){
+    const legend = 'Critères observés (informatifs, une seule note par séance) : '+trimestre.attitude.criteria.map(escapeHtml).join(', ');
+    return html + renderSimpleEval(tab, act, activityLabel, 'natAtt_'+trimestre.id, trimestre.attitude, 'Attitude — '+trimestre.label+' — '+tab.name, legend, EVAL_CAT_COLOR.attitude);
+  }
+  if(nav.evalSubCat==='implication'){
+    const legend = 'TB = persévérant · S = Réglo · F = amuseur / minimaliste · I = fainéant';
+    return html + renderSimpleEval(tab, act, activityLabel, 'natImp_'+trimestre.id, trimestre.implication, 'Implication — '+trimestre.label+' — '+tab.name, legend, EVAL_CAT_COLOR.implication);
+  }
+
+  const skills = ev.custom.filter(c=>(c.trimestre||'t1')===trimestre.id);
+  if(!nav.evalSkill || !skills.some(c=>c.id===nav.evalSkill)) nav.evalSkill = skills[0] ? skills[0].id : null;
+  html += `<div class="tabbar sub3">`;
+  skills.forEach((c,i)=>{
+    const color = CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length];
+    html += `<button class="${nav.evalSkill===c.id?'active':''}" style="--cat:${color}" onclick="setNav({evalSkill:'${c.id}'})">${escapeHtml(c.title)}</button>`;
+  });
+  html += `<button class="add" onclick="addNatationSkillEval('${tab.id}','${escapeAct(activityLabel)}','${trimestre.id}')">+ Onglet</button>`;
+  html += `</div>`;
+  const skillIdx = skills.findIndex(c=>c.id===nav.evalSkill);
+  const skill = skillIdx>=0 ? skills[skillIdx] : null;
+  if(skill){
+    const color = CUSTOM_EVAL_COLORS[skillIdx % CUSTOM_EVAL_COLORS.length];
+    html += renderSimpleEval(tab, act, activityLabel, skill.id, skill, skill.title+' — '+tab.name, 'Critères informatifs (un simple repère, pas de note par critère) :', color, true);
+  }
+  return html;
+}
+function renderEvaluations(tab, act, activityLabel){
+  if(isNatationJourTab(tab)) return renderNatationEvaluations(tab, act, activityLabel);
+  const ev = act.evaluations;
+  const hideEchauffement = tab.niveau==='6' && activityLabel==='Natation';
   if(!nav.evalCat || (hideEchauffement && nav.evalCat==='echauffement')) nav.evalCat = hideEchauffement ? 'attitude' : 'echauffement';
   let tabsHtml = `<div class="tabbar sub3">`;
   EVAL_CATS.forEach(c=>{
@@ -2805,7 +2894,10 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
   return html;
 }
 function findSimpleEval(act, key){
-  return key.startsWith('custom_') ? act.evaluations.custom.find(c=>c.id===key) : act.evaluations[key];
+  if(key.startsWith('custom_')) return act.evaluations.custom.find(c=>c.id===key);
+  if(key.startsWith('natAtt_')) return act.evaluations.natationTrimestres[key.slice(7)].attitude;
+  if(key.startsWith('natImp_')) return act.evaluations.natationTrimestres[key.slice(7)].implication;
+  return act.evaluations[key];
 }
 function addSimpleSeance(tabId, activityLabel, key){
   const act = findActivity(tabId, activityLabel);
@@ -2896,6 +2988,20 @@ function simpleFinalGrade(evalObj, studentId){
 }
 function recapColumns(tab, act){
   const ev = act.evaluations;
+  if(isNatationJourTab(tab)){
+    ensureNatationTrimestre1(ev);
+    const cols = [];
+    (ev.natationTrimestreOrder||[]).forEach(id=>{
+      const t = ev.natationTrimestres[id];
+      if(!t) return;
+      cols.push({label:'Attitude — '+t.label, color:EVAL_CAT_COLOR.attitude, get:(s)=> simpleFinalGrade(t.attitude, s.id)});
+      cols.push({label:'Implication — '+t.label, color:EVAL_CAT_COLOR.implication, get:(s)=> simpleFinalGrade(t.implication, s.id)});
+    });
+    ev.custom.forEach((c,i)=>{
+      cols.push({label:c.title, color:CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length], get:(s)=> simpleFinalGrade(c, s.id)});
+    });
+    return cols;
+  }
   const cols = [
     {label:'Capacités', color:EVAL_CAT_COLOR.capacites, get:(s)=> simpleFinalGrade(ev.capacites, s.id)},
     {label:'Performance', color:EVAL_CAT_COLOR.performance, get:(s)=> simpleFinalGrade(ev.performance, s.id)},
