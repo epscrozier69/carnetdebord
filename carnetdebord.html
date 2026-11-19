@@ -992,8 +992,7 @@ function addNatationSkillEval(tabId, activityLabel, trimestreId){
   const act = findActivity(tabId, activityLabel);
   const id = 'custom_'+uid();
   act.evaluations.custom.push({id, title, criteria, seances:[], trimestre:trimestreId});
-  saveState();
-  setNav({evalSkill:id});
+  saveState(); renderApp();
 }
 function appelShowsClasseColumn(tab){
   if(tab.kind==='classe') return false;
@@ -2452,22 +2451,54 @@ function renderNatationEvaluations(tab, act, activityLabel){
     return html + renderSimpleEval(tab, act, activityLabel, 'natImp_'+trimestre.id, trimestre.implication, 'Implication — '+trimestre.label+' — '+tab.name, legend, EVAL_CAT_COLOR.implication);
   }
 
+  return html + renderNatationCapacitesPerfGrid(tab, act, activityLabel, trimestre);
+}
+function renderNatationCapacitesPerfGrid(tab, act, activityLabel, trimestre){
+  const ev = act.evaluations;
   const skills = ev.custom.filter(c=>(c.trimestre||'t1')===trimestre.id);
-  if(!nav.evalSkill || !skills.some(c=>c.id===nav.evalSkill)) nav.evalSkill = skills[0] ? skills[0].id : null;
-  html += `<div class="tabbar sub3">`;
-  skills.forEach((c,i)=>{
-    const color = CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length];
-    html += `<button class="${nav.evalSkill===c.id?'active':''}" style="--cat:${color}" onclick="setNav({evalSkill:'${c.id}'})">${escapeHtml(c.title)}</button>`;
+  skills.forEach(sk=>{ if(!sk.seances.length) sk.seances.push({id:uid(), date:todayISO(), marks:{}, title:''}); });
+  const students = sortedStudents(tab.students);
+  const color = EVAL_CAT_COLOR.capacites;
+  let html = `<div style="background:${lightTint(color)};border-radius:16px;padding:4px;">
+  <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${color},${shadeColor(color,-24)});">
+    <div class="toolbar">
+      <h2 style="margin:0;flex:1;">Capacités/Perf — ${escapeHtml(trimestre.label)} — ${escapeHtml(tab.name)}</h2>
+      <button class="btn small" onclick="addNatationSkillEval('${tab.id}','${escapeAct(activityLabel)}','${trimestre.id}')">+ Compétence</button>
+    </div>
+    <p class="legend" style="border-left-color:${color};">Une colonne par compétence évaluée ce trimestre. Survolez un en-tête pour voir son barème TB/S/F/I.</p>
+    <div class="table-scroll"><table class="data"${rowFitStyle(students.length)}><thead><tr><th class="num" style="background:${color}">N°</th><th class="name" style="background:${color}">Élève</th>`;
+  skills.forEach((sk,i)=>{
+    const colI = CUSTOM_EVAL_COLORS[i % CUSTOM_EVAL_COLORS.length];
+    const baremeTitle = sk.criteria.join(' · ');
+    html += `<th style="background:${colorForColCat(colI,i)}" title="${escapeHtml(baremeTitle)}">
+      <div style="font-weight:800;font-size:.68rem;max-width:120px;cursor:pointer;" onclick="renameCustomEval('${tab.id}','${escapeAct(activityLabel)}','${sk.id}')">${escapeHtml(sk.title)}</div>
+      <button class="th-del" title="Supprimer cette compétence" onclick="deleteCustomEval('${tab.id}','${escapeAct(activityLabel)}','${sk.id}')">✕</button>
+    </th>`;
   });
-  html += `<button class="add" onclick="addNatationSkillEval('${tab.id}','${escapeAct(activityLabel)}','${trimestre.id}')">+ Onglet</button>`;
-  html += `</div>`;
-  const skillIdx = skills.findIndex(c=>c.id===nav.evalSkill);
-  const skill = skillIdx>=0 ? skills[skillIdx] : null;
-  if(skill){
-    const color = CUSTOM_EVAL_COLORS[skillIdx % CUSTOM_EVAL_COLORS.length];
-    html += renderSimpleEval(tab, act, activityLabel, skill.id, skill, skill.title+' — '+tab.name, 'Critères informatifs (un simple repère, pas de note par critère) :', color, true);
-  }
+  html += `</tr></thead><tbody>`;
+  students.forEach((s,idx)=>{
+    html += `<tr><td class="num">${idx+1}</td><td class="${nameCellClass(idx)}">${escapeHtml(s.nomPrenom)}</td>`;
+    skills.forEach(sk=>{
+      const val = sk.seances[0].marks[s.id] || '';
+      const col = val ? LEVEL_COLOR[val] : {bg:'#f1f5f9',fg:'#64748b'};
+      html += `<td><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleNatationSkillGrade('${tab.id}','${escapeAct(activityLabel)}','${sk.id}','${s.id}')">${val||'·'}</span></td>`;
+    });
+    html += `</tr>`;
+  });
+  if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
+  if(!skills.length) html += `<tr><td class="empty" colspan="99">Aucune compétence. Cliquez sur « + Compétence ».</td></tr>`;
+  html += `</tbody></table></div></div></div>`;
   return html;
+}
+function cycleNatationSkillGrade(tabId, activityLabel, skillId, studentId){
+  const act = findActivity(tabId, activityLabel);
+  const skill = act.evaluations.custom.find(c=>c.id===skillId);
+  if(!skill.seances.length) skill.seances.push({id:uid(), date:todayISO(), marks:{}, title:''});
+  const se = skill.seances[0];
+  const cur = se.marks[studentId] || '';
+  const idx = LEVEL_CYCLE.indexOf(cur);
+  se.marks[studentId] = LEVEL_CYCLE[(idx+1)%LEVEL_CYCLE.length];
+  saveState(); renderApp();
 }
 function renderEvaluations(tab, act, activityLabel){
   if(isNatationJourTab(tab)) return renderNatationEvaluations(tab, act, activityLabel);
