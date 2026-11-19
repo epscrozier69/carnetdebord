@@ -484,6 +484,69 @@ const EVAL_CAT_COLOR = {
 };
 const CUSTOM_EVAL_COLORS = ['#7c3aed','#db2777','#0891b2','#d97706','#c026d3','#4f46e5'];
 
+const NATATION_JOUR_CUSTOM_EVALS = [
+  {
+    id:'custom_fusee_t1',
+    title:"Fusée (coulée + entrée dans l'eau) — Trimestre 1",
+    criteria:[
+      "TB : poussée 2 pieds, corps gainé et profilé (tête entre les bras, regard vers le fond), fusée qui glisse avec reprise en battements de jambes",
+      "S : poussée des 2 pieds mais ne se laisse pas glisser",
+      "F : poussée 1 pied avec la tête redressée",
+      "I : pas de poussée, non gainé et profilé"
+    ]
+  },
+  {
+    id:'custom_alignement_crawl_t1',
+    title:"Alignement en crawl (25m crawl, sans frite) — Trimestre 1",
+    criteria:[
+      "TB : corps à l'horizontale, gainé, battements continus et réguliers sur 25m",
+      "S : corps à l'horizontale, manque encore de gainage et/ou battements irréguliers, la nage se dégrade après 15m",
+      "F : manque encore de gainage et/ou battements irréguliers, la nage se dégrade après 10m",
+      "I : corps oblique et battements irréguliers et discontinus"
+    ]
+  },
+  {
+    id:'custom_respiration_crawl_t1',
+    title:"Respiration en crawl (25m crawl) — Trimestre 1",
+    criteria:[
+      "TB : tête dans l'eau, souffle et inspiration latérale courte",
+      "S : tête dans l'eau, souffle et inspiration latérale/devant un peu longue",
+      "F : tête dans l'eau, inspiration longue quasi à la verticale",
+      "I : pas d'immersion de la tête"
+    ]
+  },
+  {
+    id:'custom_performance_crawl_t1',
+    title:"Performance en crawl (25m crawl) — Trimestre 1",
+    criteria:[
+      "TB : 0 arrêt",
+      "S : 1 arrêt",
+      "F : 2-3 arrêts",
+      "I : 4 ou + arrêts"
+    ]
+  },
+  {
+    id:'custom_alignement_dos_t1',
+    title:"Alignement en dos (25m dos) — Trimestre 1",
+    criteria:[
+      "TB : corps à l'horizontale, gainé et profilé, bras le long du corps, battements continus et réguliers",
+      "S : corps à l'horizontale, bras le long du corps mais manque de gainage ou battements un peu irréguliers",
+      "F : équilibre horizontal instable et battements irréguliers",
+      "I : avec frite, le corps n'est pas réellement allongé dans l'eau, peu de gainage ou battements irréguliers"
+    ]
+  },
+  {
+    id:'custom_performance_dos_t1',
+    title:"Performance en dos (25m dos) — Trimestre 1",
+    criteria:[
+      "TB : 0 arrêt",
+      "S : 1 arrêt",
+      "F : 2-3 arrêts",
+      "I : 4 ou + arrêts"
+    ]
+  }
+];
+
 /* ============================= STATE ============================= */
 function migrateState(){
   Object.values(state.tabs).forEach(tab=>{
@@ -492,8 +555,9 @@ function migrateState(){
         act.evaluations.rolesSociaux = {criteria:[], seances:[]};
       }
       if(!act.baremes) act.baremes = [];
-      if(act.evaluations===null && !act.isConseil && !act.isTheorie && isNatationJourTab(tab)){
-        act.evaluations = makeEvaluations();
+      if(!act.isConseil && !act.isTheorie && isNatationJourTab(tab)){
+        if(act.evaluations===null) act.evaluations = makeEvaluations();
+        ensureNatationCustomEvals(act.evaluations);
       }
     });
     (tab.students||[]).forEach(s=>{
@@ -878,6 +942,14 @@ function isNatationJourTab(tab){
   const n = normalize(tab.name);
   return n.includes('natation') && (n.includes('lundi') || n.includes('vendredi'));
 }
+function ensureNatationCustomEvals(ev){
+  if(!ev || !ev.custom) return;
+  NATATION_JOUR_CUSTOM_EVALS.forEach(def=>{
+    if(!ev.custom.some(c=>c.id===def.id)){
+      ev.custom.push({id:def.id, title:def.title, criteria:def.criteria.slice(), seances:[]});
+    }
+  });
+}
 function appelShowsClasseColumn(tab){
   if(tab.kind==='classe') return false;
   const n = normalize(tab.name);
@@ -1246,6 +1318,7 @@ function ensureTab(id, name, kind, niveau, fields){
         isConseil: isConseilTab,
         conseil: isConseilTab ? {periods:[]} : undefined
       };
+      if(isNatationJourTab(tab)) ensureNatationCustomEvals(tab.activities[actName].evaluations);
     }
   });
   return tab;
