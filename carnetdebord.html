@@ -487,7 +487,7 @@ const CUSTOM_EVAL_COLORS = ['#7c3aed','#db2777','#0891b2','#d97706','#c026d3','#
 const NATATION_JOUR_CUSTOM_EVALS = [
   {
     id:'custom_fusee_t1',
-    title:"Fusée (coulée + entrée dans l'eau) — Trimestre 1",
+    title:"Fusée (coulée + entrée dans l'eau)",
     criteria:[
       "TB : poussée 2 pieds, corps gainé et profilé (tête entre les bras, regard vers le fond), fusée qui glisse avec reprise en battements de jambes",
       "S : poussée des 2 pieds mais ne se laisse pas glisser",
@@ -497,7 +497,7 @@ const NATATION_JOUR_CUSTOM_EVALS = [
   },
   {
     id:'custom_alignement_crawl_t1',
-    title:"Alignement en crawl (25m crawl, sans frite) — Trimestre 1",
+    title:"Alignement en crawl (25m crawl, sans frite)",
     criteria:[
       "TB : corps à l'horizontale, gainé, battements continus et réguliers sur 25m",
       "S : corps à l'horizontale, manque encore de gainage et/ou battements irréguliers, la nage se dégrade après 15m",
@@ -507,7 +507,7 @@ const NATATION_JOUR_CUSTOM_EVALS = [
   },
   {
     id:'custom_respiration_crawl_t1',
-    title:"Respiration en crawl (25m crawl) — Trimestre 1",
+    title:"Respiration en crawl (25m crawl)",
     criteria:[
       "TB : tête dans l'eau, souffle et inspiration latérale courte",
       "S : tête dans l'eau, souffle et inspiration latérale/devant un peu longue",
@@ -517,7 +517,7 @@ const NATATION_JOUR_CUSTOM_EVALS = [
   },
   {
     id:'custom_performance_crawl_t1',
-    title:"Performance en crawl (25m crawl) — Trimestre 1",
+    title:"Performance en crawl (25m crawl)",
     criteria:[
       "TB : 0 arrêt",
       "S : 1 arrêt",
@@ -527,7 +527,7 @@ const NATATION_JOUR_CUSTOM_EVALS = [
   },
   {
     id:'custom_alignement_dos_t1',
-    title:"Alignement en dos (25m dos) — Trimestre 1",
+    title:"Alignement en dos (25m dos)",
     criteria:[
       "TB : corps à l'horizontale, gainé et profilé, bras le long du corps, battements continus et réguliers",
       "S : corps à l'horizontale, bras le long du corps mais manque de gainage ou battements un peu irréguliers",
@@ -537,7 +537,7 @@ const NATATION_JOUR_CUSTOM_EVALS = [
   },
   {
     id:'custom_performance_dos_t1',
-    title:"Performance en dos (25m dos) — Trimestre 1",
+    title:"Performance en dos (25m dos)",
     criteria:[
       "TB : 0 arrêt",
       "S : 1 arrêt",
@@ -966,7 +966,7 @@ function addNatationTrimestre(tabId, activityLabel){
   ev.natationTrimestres[id] = {id, label, attitude: natationDefaultAttitude(), implication: natationDefaultImplication()};
   ev.natationTrimestreOrder.push(id);
   saveState();
-  setNav({evalCat:id, evalSubCat:'attitude', evalSkill:null});
+  setNav({evalCat:id, evalSubCat:'capacitesPerf', evalSkill:null});
 }
 function ensureNatationCustomEvals(ev){
   if(!ev || !ev.custom) return;
@@ -982,7 +982,10 @@ function ensureNatationCustomEvals(ev){
     }
     item.autoSeeded = true;
   });
-  ev.custom.forEach(c=>{ if(!c.trimestre) c.trimestre='t1'; });
+  ev.custom.forEach(c=>{
+    if(!c.trimestre) c.trimestre='t1';
+    c.title = c.title.replace(/ — Trimestre \d+$/, '');
+  });
 }
 function addNatationSkillEval(tabId, activityLabel, trimestreId){
   const title = prompt("Titre de la nouvelle évaluation :");
@@ -2426,7 +2429,7 @@ function renderNatationEvaluations(tab, act, activityLabel){
   if(!nav.evalCat || (nav.evalCat!=='recap' && !trimestres.some(t=>t.id===nav.evalCat))) nav.evalCat = trimestres[0].id;
   let html = `<div class="tabbar sub3">`;
   trimestres.forEach(t=>{
-    html += `<button class="${nav.evalCat===t.id?'active':''}" style="--cat:${EVAL_CAT_COLOR.echauffement}" onclick="setNav({evalCat:'${t.id}', evalSubCat:'attitude', evalSkill:null})">${escapeHtml(t.label)}</button>`;
+    html += `<button class="${nav.evalCat===t.id?'active':''}" style="--cat:${EVAL_CAT_COLOR.echauffement}" onclick="setNav({evalCat:'${t.id}', evalSubCat:'capacitesPerf', evalSkill:null})">${escapeHtml(t.label)}</button>`;
   });
   html += `<button class="add" onclick="addNatationTrimestre('${tab.id}','${escapeAct(activityLabel)}')">+ Trimestre</button>`;
   html += `<button class="${nav.evalCat==='recap'?'active':''}" style="--cat:${EVAL_CAT_COLOR.recap}" onclick="setNav({evalCat:'recap'})">🏁 Récap</button>`;
@@ -2435,11 +2438,11 @@ function renderNatationEvaluations(tab, act, activityLabel){
   if(nav.evalCat==='recap') return html + renderRecap(tab, act, activityLabel);
 
   const trimestre = ev.natationTrimestres[nav.evalCat];
-  if(!nav.evalSubCat || !['attitude','implication','capacitesPerf'].includes(nav.evalSubCat)) nav.evalSubCat = 'attitude';
+  if(!nav.evalSubCat || !['attitude','implication','capacitesPerf'].includes(nav.evalSubCat)) nav.evalSubCat = 'capacitesPerf';
   html += `<div class="tabbar sub3">
-    <button class="${nav.evalSubCat==='attitude'?'active':''}" style="--cat:${EVAL_CAT_COLOR.attitude}" onclick="setNav({evalSubCat:'attitude'})">Attitude</button>
-    <button class="${nav.evalSubCat==='implication'?'active':''}" style="--cat:${EVAL_CAT_COLOR.implication}" onclick="setNav({evalSubCat:'implication'})">Implication</button>
     <button class="${nav.evalSubCat==='capacitesPerf'?'active':''}" style="--cat:${EVAL_CAT_COLOR.capacites}" onclick="setNav({evalSubCat:'capacitesPerf'})">Capacités/Perf</button>
+    <button class="${nav.evalSubCat==='implication'?'active':''}" style="--cat:${EVAL_CAT_COLOR.implication}" onclick="setNav({evalSubCat:'implication'})">Implication</button>
+    <button class="${nav.evalSubCat==='attitude'?'active':''}" style="--cat:${EVAL_CAT_COLOR.attitude}" onclick="setNav({evalSubCat:'attitude'})">Attitude</button>
   </div>`;
 
   if(nav.evalSubCat==='attitude'){
