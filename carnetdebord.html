@@ -492,6 +492,9 @@ function migrateState(){
         act.evaluations.rolesSociaux = {criteria:[], seances:[]};
       }
       if(!act.baremes) act.baremes = [];
+      if(act.evaluations===null && !act.isConseil && !act.isTheorie && isNatationJourTab(tab)){
+        act.evaluations = makeEvaluations();
+      }
     });
     (tab.students||[]).forEach(s=>{
       if(!s.dispenses) s.dispenses = [];
@@ -870,13 +873,18 @@ function sortedStudentsByClasse(students){
     return (a.nom+a.prenom).localeCompare(b.nom+b.prenom,'fr',{sensitivity:'base'});
   });
 }
+function isNatationJourTab(tab){
+  if(tab.kind==='classe') return false;
+  const n = normalize(tab.name);
+  return n.includes('natation') && (n.includes('lundi') || n.includes('vendredi'));
+}
 function appelShowsClasseColumn(tab){
   if(tab.kind==='classe') return false;
   const n = normalize(tab.name);
   if(n.includes('taekwondo')) return true;
   if(n.includes('futsal')) return true;
   if(n.includes('sport partage')) return true;
-  if(n.includes('natation') && (n.includes('lundi') || n.includes('vendredi'))) return true;
+  if(isNatationJourTab(tab)) return true;
   return false;
 }
 function isTaekwondoTab(tab){
@@ -1232,7 +1240,7 @@ function ensureTab(id, name, kind, niveau, fields){
       const isConseilTab = actName===CONSEIL_TAB_NAME;
       tab.activities[actName] = {
         appels: [],
-        evaluations: isTheorieTab ? {echauffementTheorie:{seances:[]}} : (isConseilTab ? null : (kind==='classe' ? makeEvaluations() : null)),
+        evaluations: isTheorieTab ? {echauffementTheorie:{seances:[]}} : (isConseilTab ? null : ((kind==='classe' || isNatationJourTab(tab)) ? makeEvaluations() : null)),
         baremes: [],
         isTheorie: isTheorieTab,
         isConseil: isConseilTab,
@@ -2296,7 +2304,7 @@ function renderActivityTheorie(tab, act, activityLabel){
 
 function renderEvaluations(tab, act, activityLabel){
   const ev = act.evaluations;
-  const hideEchauffement = tab.niveau==='6' && activityLabel==='Natation';
+  const hideEchauffement = (tab.niveau==='6' && activityLabel==='Natation') || isNatationJourTab(tab);
   if(!nav.evalCat || (hideEchauffement && nav.evalCat==='echauffement')) nav.evalCat = hideEchauffement ? 'attitude' : 'echauffement';
   let tabsHtml = `<div class="tabbar sub3">`;
   EVAL_CATS.forEach(c=>{
