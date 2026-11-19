@@ -972,9 +972,15 @@ function ensureNatationCustomEvals(ev){
   if(!ev || !ev.custom) return;
   ensureNatationTrimestre1(ev);
   NATATION_JOUR_CUSTOM_EVALS.forEach(def=>{
-    if(!ev.custom.some(c=>c.id===def.id)){
-      ev.custom.push({id:def.id, title:def.title, criteria:def.criteria.slice(), seances:[], trimestre:'t1'});
+    let item = ev.custom.find(c=>c.id===def.id);
+    if(!item){
+      item = {id:def.id, title:def.title, criteria:def.criteria.slice(), seances:[], trimestre:'t1'};
+      ev.custom.push(item);
     }
+    if(!item.seances.length && !item.autoSeeded){
+      item.seances.push({id:uid(), date:todayISO(), marks:{}, title:''});
+    }
+    item.autoSeeded = true;
   });
   ev.custom.forEach(c=>{ if(!c.trimestre) c.trimestre='t1'; });
 }
