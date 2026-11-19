@@ -2470,7 +2470,7 @@ function renderNatationCapacitesPerfGrid(tab, act, activityLabel, trimestre){
       <button class="btn small" onclick="addNatationSkillEval('${tab.id}','${escapeAct(activityLabel)}','${trimestre.id}')">+ Compétence</button>
     </div>
     ${infoSkill
-      ? `<div class="legend" style="border-left-color:${color};"><strong>${escapeHtml(infoSkill.title)}</strong> <span class="muted" style="font-size:.7rem;">(cliquez un critère pour le modifier)</span>${renderCriteriaChips(tab.id, activityLabel, infoSkill.id, infoSkill.criteria)}</div>`
+      ? `<div class="legend" style="border-left-color:${color};display:block;"><strong>${escapeHtml(infoSkill.title)}</strong> <span class="muted" style="font-size:.7rem;">(cliquez un critère pour le modifier)</span>${renderCriteriaChips(tab.id, activityLabel, infoSkill.id, infoSkill.criteria, true)}</div>`
       : `<p class="legend" style="border-left-color:${color};">Cliquez sur le titre d'une compétence pour afficher et modifier son barème TB/S/F/I ici.</p>`}
     <div class="table-scroll"><table class="data"${rowFitStyle(students.length)}><thead><tr><th class="num" style="background:${color}">N°</th><th class="name" style="background:${color}">Élève</th>`;
   skills.forEach((sk,i)=>{
@@ -3000,10 +3000,11 @@ function cycleTheorie6FinalOverride(tabId, activityLabel, studentId){
   if(next) data.finalOverride[studentId] = next; else delete data.finalOverride[studentId];
   saveState(); renderApp();
 }
-function renderCriteriaChips(tabId, activityLabel, key, criteria){
-  return `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0 10px;">
-    ${criteria.map((c,i)=>`<span class="pill" style="padding:3px 6px 3px 10px;display:inline-flex;align-items:center;gap:6px;">
-      <span style="cursor:pointer;" title="Cliquer pour modifier" onclick="editCriterion('${tabId}','${escapeAct(activityLabel)}','${key}',${i})">${escapeHtml(c)}</span>
+function renderCriteriaChips(tabId, activityLabel, key, criteria, stacked){
+  const containerStyle = stacked ? 'flex-direction:column;align-items:flex-start;' : 'flex-wrap:wrap;align-items:center;';
+  return `<div style="display:flex;${containerStyle}gap:6px;margin:2px 0 10px;">
+    ${criteria.map((c,i)=>`<span class="pill" style="padding:3px 6px 3px 10px;display:inline-flex;align-items:center;gap:6px;${stacked?'width:100%;box-sizing:border-box;white-space:normal;':''}">
+      <span style="cursor:pointer;${stacked?'flex:1;':''}" title="Cliquer pour modifier" onclick="editCriterion('${tabId}','${escapeAct(activityLabel)}','${key}',${i})">${escapeHtml(c)}</span>
       <button class="th-del" style="position:static;width:15px;height:15px;font-size:.55rem;flex-shrink:0;" title="Retirer ce critère" onclick="removeCriterion('${tabId}','${escapeAct(activityLabel)}','${key}',${i})">✕</button>
     </span>`).join('')}
     <button class="add-mini" title="Ajouter un critère" onclick="addCriterion('${tabId}','${escapeAct(activityLabel)}','${key}')">+</button>
