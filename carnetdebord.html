@@ -547,10 +547,39 @@ const NATATION_JOUR_CUSTOM_EVALS = [
   }
 ];
 
+const VOLLEY_3E_CAPACITES_CRITERIA = [
+  "TB : Le volleyeur — joueur mobile pour être efficace. Service assuré en fond de court. Se définit rapidement réceptionneur en parlant, mobile. La réception est contrôlée et ballon envoyé en zone avant. Renvoi assuré avec mise en danger (variation des renvois court/long/placé)",
+  "S : Le sportif — joueur efficace en situation favorable. Service assuré en fond de court. Se définit rapidement réceptionneur en parlant, mobile, la réception est contrôlée et exploitable. Renvoi assuré avec début de mise en danger",
+  "F : Le conservateur — renvoyeur ou le bloqueur. Service assuré au 3m. Réception blocage régulière. Renvoi de sauvegarde",
+  "I : L'explosif — non renvoyeur. Service raté. Statique, souvent mal placé(e)s. Perte de balles régulière"
+];
+const VOLLEY_3E_PERFORMANCE_CRITERIA = [
+  "TB : Gagnant terrain 1",
+  "S : Perdant terrain 1 et gagnant terrain 2",
+  "F : Perdant terrain 2 et gagnant terrain 3",
+  "I : Perdant terrain 3"
+];
+const VOLLEY_3E_ROLES_SOCIAUX_CRITERIA = [
+  "TB : Le connaisseur — sérieux et appliqué, maîtrise le déroulement du match, arbitre fiable avec assurance",
+  "S : Le motivé — sérieux et appliqué, manque encore d'assurance, quelques oublis",
+  "F : Le timide — connaissance insuffisante du règlement et participation timide dans les tâches",
+  "I : Le distrait — distrait, peu fiable"
+];
+const VOLLEY_3E_PROJET_COLLECTIF_EVAL = {
+  id:'custom_projet_collectif_volley3e',
+  title:'Projet collectif',
+  criteria:[
+    "TB : Renvoi seul ou à plusieurs avec mise en difficulté. La construction de l'attaque devient systématique. Les rôles de passeur et réceptionneurs sont bien définis",
+    "S : Renvoi seul ou à plusieurs avec début de mise en difficulté (intention de marquer le point). Les rôles de passeur et réceptionneurs sont bien définis",
+    "F : Renvoi seul ou de sauvegarde ou à plusieurs mais sans mise en difficulté. Début d'organisation collective",
+    "I : Pas de communication, joue seul avec bcp de pertes de balle. Ne différencie pas les rôles"
+  ]
+};
+
 /* ============================= STATE ============================= */
 function migrateState(){
   Object.values(state.tabs).forEach(tab=>{
-    Object.values(tab.activities||{}).forEach(act=>{
+    Object.entries(tab.activities||{}).forEach(([actName, act])=>{
       if(act.evaluations && !act.evaluations.rolesSociaux){
         act.evaluations.rolesSociaux = {criteria:[], seances:[]};
       }
@@ -558,6 +587,10 @@ function migrateState(){
       if(!act.isConseil && !act.isTheorie && isNatationJourTab(tab)){
         if(act.evaluations===null) act.evaluations = makeEvaluations();
         ensureNatationCustomEvals(act.evaluations);
+      }
+      if(!act.isConseil && !act.isTheorie && isVolley3eActivity(tab, actName)){
+        if(act.evaluations===null) act.evaluations = makeEvaluations();
+        ensureVolley3eBaremes(act);
       }
     });
     (tab.students||[]).forEach(s=>{
@@ -987,6 +1020,24 @@ function ensureNatationCustomEvals(ev){
     c.title = c.title.replace(/ — Trimestre \d+$/, '');
   });
 }
+function isVolley3eActivity(tab, actName){
+  return tab.kind==='classe' && tab.niveau==='3' && actName==='Volley';
+}
+function ensureVolley3eBaremes(act){
+  if(!act || !act.evaluations) return;
+  const ev = act.evaluations;
+  if(ev.capacites && !ev.capacites.criteria.length) ev.capacites.criteria = VOLLEY_3E_CAPACITES_CRITERIA.slice();
+  if(ev.performance && !ev.performance.criteria.length) ev.performance.criteria = VOLLEY_3E_PERFORMANCE_CRITERIA.slice();
+  if(ev.rolesSociaux && !ev.rolesSociaux.criteria.length) ev.rolesSociaux.criteria = VOLLEY_3E_ROLES_SOCIAUX_CRITERIA.slice();
+  if(ev.custom && !ev.custom.find(c=>c.id===VOLLEY_3E_PROJET_COLLECTIF_EVAL.id)){
+    ev.custom.push({
+      id: VOLLEY_3E_PROJET_COLLECTIF_EVAL.id,
+      title: VOLLEY_3E_PROJET_COLLECTIF_EVAL.title,
+      criteria: VOLLEY_3E_PROJET_COLLECTIF_EVAL.criteria.slice(),
+      seances: [{id:uid(), date:todayISO(), marks:{}, title:''}]
+    });
+  }
+}
 function addNatationSkillEval(tabId, activityLabel, trimestreId){
   const title = prompt("Titre de la nouvelle évaluation :");
   if(!title) return;
@@ -1366,6 +1417,7 @@ function ensureTab(id, name, kind, niveau, fields){
         conseil: isConseilTab ? {periods:[]} : undefined
       };
       if(isNatationJourTab(tab)) ensureNatationCustomEvals(tab.activities[actName].evaluations);
+      if(isVolley3eActivity(tab, actName)) ensureVolley3eBaremes(tab.activities[actName]);
     }
   });
   return tab;
