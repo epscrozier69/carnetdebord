@@ -2368,9 +2368,8 @@ function presenceForDate(act, date, studentId){
   return rec ? rec.presence : null;
 }
 function presenceBlocksGrading(presence, key){
-  if(!presence || presence==='P') return false;
-  if(key==='echauffementTheorie') return !['RETARD','DP'].includes(presence);
-  if(key==='echauffementPratique') return presence!=='RETARD';
+  if(!presence || presence==='P' || presence==='RETARD') return false;
+  if(key==='echauffementTheorie') return presence!=='DP';
   return true;
 }
 function renderAttendanceOverride(presence){
