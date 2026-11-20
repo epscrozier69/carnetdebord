@@ -2134,7 +2134,7 @@ function renderAppel(tab, act, activityLabel){
     <div class="table-scroll"><table class="data"${rowFitStyle(students.length)}><thead><tr><th class="num">N°</th><th class="name">Élève</th>${showClasse?`<th style="background:${FIXED_HEADER_BG};cursor:pointer;" title="Cliquer pour changer le tri" onclick="setNav({appelClasseSort:!nav.appelClasseSort})">Classe ${nav.appelClasseSort?'🔽':'A→Z'}</th>`:''}`;
   const taekwondoTab = isTaekwondoTab(tab);
   appelsSorted.forEach((ap,i)=>{
-    const presCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'SLASH'}).presence)==='P'?1:0), 0);
+    const presCount = students.reduce((n,s)=> n + (['P','RETARD'].includes((ap.records[s.id]||{presence:'SLASH'}).presence)?1:0), 0);
     const dpCount = students.reduce((n,s)=> n + (((ap.records[s.id]||{presence:'SLASH'}).presence)==='DP'?1:0), 0);
     const isThursdayCol = taekwondoTab && dateDayOfWeek(ap.date)===4;
     const colBg = isThursdayCol ? 'linear-gradient(135deg,#94a3b8,#64748b)' : colorForCol(i);
