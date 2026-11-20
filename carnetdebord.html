@@ -596,6 +596,7 @@ function migrateState(){
     (tab.students||[]).forEach(s=>{
       if(!s.dispenses) s.dispenses = [];
       s.dispenses.forEach(d=>{ if('photo' in d) delete d.photo; });
+      if(s.dateNaissance) s.dateNaissance = fmtDateAny(s.dateNaissance);
     });
     if(tab.kind==='classe' && tab.niveau && tab.niveau!=='6' && (NIVEAU_ACTIVITIES[tab.niveau]||[]).includes(THEORIE_TAB_NAME) && !tab.activityOrder.includes(THEORIE_TAB_NAME)){
       tab.activityOrder.push(THEORIE_TAB_NAME);
@@ -940,6 +941,17 @@ function normalize(s){ return stripAccents(String(s||'')).toLowerCase().replace(
 function toTitleCase(s){ return String(s||'').toLowerCase().split(/\s+/).map(w=>w?w[0].toUpperCase()+w.slice(1):w).join(' '); }
 function todayISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
 function fmtDateFR(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return (d&&m&&y)?`${d}/${m}/${y}`:iso; }
+function fmtDateAny(val){
+  if(!val) return '';
+  const str = String(val).trim();
+  if(!str) return '';
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(str)) return str;
+  if(/^\d{4}-\d{2}-\d{2}/.test(str)) return fmtDateFR(str.slice(0,10));
+  const d = new Date(str);
+  if(isNaN(d.getTime())) return str;
+  const dd = String(d.getDate()).padStart(2,'0'), mm = String(d.getMonth()+1).padStart(2,'0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function sexeIcon(val){
   const v = normalize(val||'');
@@ -1443,7 +1455,10 @@ function doImportClasses(){
     const incoming = rows.map(r=>{
       const base = rowToStudentBase(r, st.mapping);
       const extra = {};
-      def.fields.forEach(f=>{ extra[f.key] = st.mapping[f.key]!=null && st.mapping[f.key]>=0 ? (r[st.mapping[f.key]]||'').trim() : ''; });
+      def.fields.forEach(f=>{
+        const raw = st.mapping[f.key]!=null && st.mapping[f.key]>=0 ? (r[st.mapping[f.key]]||'').trim() : '';
+        extra[f.key] = f.key==='dateNaissance' ? fmtDateAny(raw) : raw;
+      });
       return Object.assign(base, extra);
     }).filter(s=>s.nom || s.prenom);
     const niveauMatch = classeVal.match(/^\s*(\d)/);
@@ -1467,7 +1482,10 @@ function doImportGroup(){
   const incoming = st.rows.map(r=>{
     const base = rowToStudentBase(r, st.mapping);
     const extra = {};
-    def.fields.forEach(f=>{ extra[f.key] = st.mapping[f.key]!=null && st.mapping[f.key]>=0 ? (r[st.mapping[f.key]]||'').trim() : ''; });
+    def.fields.forEach(f=>{
+      const raw = st.mapping[f.key]!=null && st.mapping[f.key]>=0 ? (r[st.mapping[f.key]]||'').trim() : '';
+      extra[f.key] = f.key==='dateNaissance' ? fmtDateAny(raw) : raw;
+    });
     return Object.assign(base, extra);
   }).filter(s=>s.nom || s.prenom);
   const id = 'groupe_'+normalize(groupName).replace(/\s+/g,'_');
