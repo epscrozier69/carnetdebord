@@ -268,8 +268,8 @@ body.starter-dragging .starter-drop-target{outline:2px dashed rgba(37,99,235,.5)
 .chip-toggle.on{background:var(--chip,#475569);color:#fff;}
 .chip-toggle:hover{transform:translateY(-1px);}
 .inc-add{
-  width:18px;
-  height:18px;
+  width:20px;
+  height:20px;
   flex-shrink:0;
   -webkit-appearance:none;
   -moz-appearance:none;
@@ -289,7 +289,7 @@ body.starter-dragging .starter-drop-target{outline:2px dashed rgba(37,99,235,.5)
   transition:.12s;
 }
 .inc-add:hover,.inc-add:focus{background:#f1f5f9;color:var(--primary);opacity:1;}
-.inc-add.has-note{opacity:1;color:#d97706;}
+.inc-add.has-note{opacity:1;color:#d97706;border:1.5px solid #d97706;background:#fffbeb;}
 
 .pillrow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
 .pill{
@@ -2183,8 +2183,8 @@ function renderAppel(tab, act, activityLabel){
           }).join('')}
           <select class="inc-add${rec.note?' has-note':''}" title="${rec.note?('Annotation : '+escapeHtml(rec.note)):'Ajouter un incident'}" onchange="if(this.value==='__note__'){ openAppelNote('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}'); } else if(this.value){ toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}', this.value); } this.value='';">
             <option value="">+</option>
-            ${INCIDENTS.filter(inc=>!rec.incidents.includes(inc.code)).map(inc=>`<option value="${inc.code}">${inc.code} — ${escapeHtml(inc.label)}</option>`).join('')}
             <option value="__note__">📝 Annotation${rec.note?' (saisie)':''}</option>
+            ${INCIDENTS.filter(inc=>!rec.incidents.includes(inc.code)).map(inc=>`<option value="${inc.code}">${inc.code} — ${escapeHtml(inc.label)}</option>`).join('')}
           </select>
         </div>
       </td>`;
