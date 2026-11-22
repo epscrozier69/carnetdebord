@@ -289,6 +289,24 @@ body.starter-dragging .starter-drop-target{outline:2px dashed rgba(37,99,235,.5)
   transition:.12s;
 }
 .inc-add:hover,.inc-add:focus{background:#f1f5f9;color:var(--primary);opacity:1;}
+.note-btn{
+  width:18px;
+  height:18px;
+  flex-shrink:0;
+  border:none;
+  background:transparent;
+  color:#cbd5e1;
+  font-size:.75rem;
+  padding:0;
+  border-radius:50%;
+  line-height:1;
+  text-align:center;
+  cursor:pointer;
+  opacity:.55;
+  transition:.12s;
+}
+.note-btn:hover,.note-btn:focus{background:#f1f5f9;color:var(--primary);opacity:1;}
+.note-btn.has-note{opacity:1;color:#d97706;}
 
 .pillrow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
 .pill{
@@ -636,7 +654,7 @@ function dispenseAppliesToActivity(match, activityLabel){
   if(match.disp.type==='natation') return activityLabel==='Natation';
   return true;
 }
-let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}, appelClasseSort:true, appelDateOrder:'asc'};
+let nav = {tabId:null, section:'eleves', activity:null, evalCat:null, echSub:'theorie', seanceSel:{}, appelClasseSort:true, appelDateOrder:'desc'};
 const NAV_KEY = 'cdb_nav_v1';
 function loadNav(){
   try{
@@ -2128,7 +2146,7 @@ function deleteDispense(tabId, studentId, dispId){
 /* ============================= APPEL (generic, column-per-séance) ============================= */
 function appelSortKey_(tabId, activityLabel){ return tabId+'::'+activityLabel; }
 function getAppelDateOrder(tabId, activityLabel){
-  return (nav.appelDateOrderByKey || {})[appelSortKey_(tabId, activityLabel)] || 'asc';
+  return (nav.appelDateOrderByKey || {})[appelSortKey_(tabId, activityLabel)] || 'desc';
 }
 function toggleAppelDateOrder(tabId, activityLabel){
   const key = appelSortKey_(tabId, activityLabel);
@@ -2170,6 +2188,7 @@ function renderAppel(tab, act, activityLabel){
       html += `<td${isThursdayCol?' style="background:#e2e8f0;"':''}>
         <div class="appel-cell">
           <span class="cell-click" style="background:${col.bg};color:${col.fg}" title="${PRESENCE_TITLE[rec.presence]}" onclick="cyclePresence('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">${PRESENCE_LABEL[rec.presence]}</span>
+          <button class="note-btn${rec.note?' has-note':''}" title="${rec.note?('Annotation : '+escapeHtml(rec.note)):'Ajouter une annotation'}" onclick="openAppelNote('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">📝</button>
           ${rec.incidents.map(code=>{
             const inc = INCIDENTS.find(i=>i.code===code);
             const bg = INCIDENT_COLOR[code]||'#334155';
@@ -2457,6 +2476,50 @@ function cyclePunition(tabId, activityLabel, appelId, studentId){
     rec.punitionDone = false;
   }
   saveState(); renderApp();
+}
+let appelNotePending = null;
+function openAppelNote(tabId, activityLabel, appelId, studentId){
+  appelNotePending = {tabId, activityLabel, appelId, studentId};
+  renderAppelNoteModal();
+}
+function renderAppelNoteModal(){
+  if(!appelNotePending) return;
+  const {tabId, activityLabel, appelId, studentId} = appelNotePending;
+  const tab = state.tabs[tabId];
+  const act = tab && findActivity(tabId, activityLabel);
+  const ap = act && act.appels.find(a=>a.id===appelId);
+  const s = tab && tab.students.find(x=>x.id===studentId);
+  if(!tab || !act || !ap || !s){ appelNotePending=null; closeModal(); return; }
+  const rec = ap.records[studentId] || {presence:'SLASH', incidents:[]};
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onmousedown="if(event.target===this) closeAppelNoteModal()">
+    <div class="modal-box" style="max-width:480px;">
+      <h2>Annotation — ${escapeHtml(s.nomPrenom)}</h2>
+      <div style="font-size:.8rem;color:var(--ink-soft);margin-bottom:6px;">${escapeHtml(ap.title||'')} ${ap.title?'—':''} ${fmtDateFR(ap.date)}</div>
+      <textarea id="appelNoteText" rows="5" style="width:100%;resize:vertical;" placeholder="Votre annotation pour cet élève à cette séance...">${escapeHtml(rec.note||'')}</textarea>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeAppelNoteModal()">Fermer</button>
+        <button class="btn" onclick="validateAppelNote()">✔ Valider</button>
+      </div>
+    </div>
+  </div>`;
+}
+function validateAppelNote(){
+  if(!appelNotePending) return;
+  const {tabId, activityLabel, appelId, studentId} = appelNotePending;
+  const act = findActivity(tabId, activityLabel);
+  const ap = act && act.appels.find(a=>a.id===appelId);
+  if(!ap) { appelNotePending=null; closeModal(); return; }
+  if(!ap.records[studentId]) ap.records[studentId] = {presence:'P', incidents:[]};
+  const ta = document.getElementById('appelNoteText');
+  if(ta) ap.records[studentId].note = ta.value;
+  saveState();
+  appelNotePending = null;
+  closeModal();
+  renderApp();
+}
+function closeAppelNoteModal(){
+  appelNotePending = null;
+  closeModal();
 }
 
 /* ============================= ACTIVITY (Appel / Évaluations) ============================= */
