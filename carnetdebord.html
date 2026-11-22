@@ -289,24 +289,7 @@ body.starter-dragging .starter-drop-target{outline:2px dashed rgba(37,99,235,.5)
   transition:.12s;
 }
 .inc-add:hover,.inc-add:focus{background:#f1f5f9;color:var(--primary);opacity:1;}
-.note-btn{
-  width:18px;
-  height:18px;
-  flex-shrink:0;
-  border:none;
-  background:transparent;
-  color:#cbd5e1;
-  font-size:.75rem;
-  padding:0;
-  border-radius:50%;
-  line-height:1;
-  text-align:center;
-  cursor:pointer;
-  opacity:.55;
-  transition:.12s;
-}
-.note-btn:hover,.note-btn:focus{background:#f1f5f9;color:var(--primary);opacity:1;}
-.note-btn.has-note{opacity:1;color:#d97706;}
+.inc-add.has-note{opacity:1;color:#d97706;}
 
 .pillrow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
 .pill{
@@ -2188,7 +2171,6 @@ function renderAppel(tab, act, activityLabel){
       html += `<td${isThursdayCol?' style="background:#e2e8f0;"':''}>
         <div class="appel-cell">
           <span class="cell-click" style="background:${col.bg};color:${col.fg}" title="${PRESENCE_TITLE[rec.presence]}" onclick="cyclePresence('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">${PRESENCE_LABEL[rec.presence]}</span>
-          <button class="note-btn${rec.note?' has-note':''}" title="${rec.note?('Annotation : '+escapeHtml(rec.note)):'Ajouter une annotation'}" onclick="openAppelNote('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}')">📝</button>
           ${rec.incidents.map(code=>{
             const inc = INCIDENTS.find(i=>i.code===code);
             const bg = INCIDENT_COLOR[code]||'#334155';
@@ -2199,9 +2181,10 @@ function renderAppel(tab, act, activityLabel){
             }
             return `<button class="incbtn on" style="background:${bg};border-color:${bg};" title="Retirer : ${escapeHtml(inc?inc.label:code)}" onclick="toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}','${code}')">${code}</button>`;
           }).join('')}
-          <select class="inc-add" title="Ajouter un incident" onchange="if(this.value){ toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}', this.value); } this.value='';">
+          <select class="inc-add${rec.note?' has-note':''}" title="${rec.note?('Annotation : '+escapeHtml(rec.note)):'Ajouter un incident'}" onchange="if(this.value==='__note__'){ openAppelNote('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}'); } else if(this.value){ toggleIncident('${tab.id}','${escapeAct(activityLabel)}','${ap.id}','${s.id}', this.value); } this.value='';">
             <option value="">+</option>
             ${INCIDENTS.filter(inc=>!rec.incidents.includes(inc.code)).map(inc=>`<option value="${inc.code}">${inc.code} — ${escapeHtml(inc.label)}</option>`).join('')}
+            <option value="__note__">📝 Annotation${rec.note?' (saisie)':''}</option>
           </select>
         </div>
       </td>`;
