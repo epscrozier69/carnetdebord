@@ -392,8 +392,8 @@ const PRESENCE_LABEL = {P:'✔',RETARD:'Ret',ABS:'✘',DP:'DP',DISP:'Disp',SLASH
 const PRESENCE_TITLE = {P:'Présent',RETARD:'Retard',ABS:'Absent',DP:'Dispensé ponctuellement',DISP:'Dispensé',SLASH:'Non concerné',EXCETA:'Exclu de l\'établissement'};
 const PRESENCE_COLOR = {P:{bg:'#dbeafe',fg:'#1e3a8a'},RETARD:{bg:'#fef08a',fg:'#854d0e'},ABS:{bg:'#fecaca',fg:'#7f1d1d'},DP:{bg:'#fed7aa',fg:'#7c2d12'},DISP:{bg:'#e9d5ff',fg:'#581c87'},SLASH:{bg:'#64748b',fg:'#fff'},EXCETA:{bg:'#881337',fg:'#fff'}};
 
-const DISP_TYPE_LABEL = {totale:'Totale', partielle:'Partielle', natation:'Natation'};
-const DISP_TYPE_COLOR = {totale:{bg:'#e9d5ff',fg:'#581c87'}, partielle:{bg:'#fed7aa',fg:'#7c2d12'}, natation:{bg:'#bae6fd',fg:'#0c4a6e'}};
+const DISP_TYPE_LABEL = {totale:'Totale', partielle:'Partielle', natation:'Natation', nonintegre:'Non intégré'};
+const DISP_TYPE_COLOR = {totale:{bg:'#e9d5ff',fg:'#581c87'}, partielle:{bg:'#fed7aa',fg:'#7c2d12'}, natation:{bg:'#bae6fd',fg:'#0c4a6e'}, nonintegre:{bg:'#fecaca',fg:'#7f1d1d'}};
 
 const INCIDENTS = [
   {code:'T',label:'Oubli de tenue'},
@@ -1530,10 +1530,10 @@ function exportClassExcel(tabId){
   students.forEach(s=> rosterRows.push([s.nomPrenom, ...tab.fields.map(f=>s[f.key]||'')]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rosterRows), safeSheetName('Élèves'));
 
-  const dispRows = [['Élève', 'Date début', 'Date fin', 'Type', 'Autorisé à ne pas assister']];
+  const dispRows = [['Élève', 'Date début', 'Date fin', 'Type', 'Autorisé à ne pas assister', 'Commentaire']];
   students.forEach(s=>{
     (s.dispenses||[]).slice().sort((a,b)=> a.dateDebut.localeCompare(b.dateDebut)).forEach(d=>{
-      dispRows.push([s.nomPrenom, fmtDateFR(d.dateDebut), d.dateFin?fmtDateFR(d.dateFin):'', DISP_TYPE_LABEL[d.type]||d.type, d.autorise?'Oui':'Non']);
+      dispRows.push([s.nomPrenom, fmtDateFR(d.dateDebut), d.dateFin?fmtDateFR(d.dateFin):'', DISP_TYPE_LABEL[d.type]||d.type, d.autorise?'Oui':'Non', d.comment||'']);
     });
   });
   if(dispRows.length>1) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dispRows), safeSheetName('Dispenses'));
@@ -1583,9 +1583,9 @@ function exportClassPDF(tabId){
   students.forEach(s=> (s.dispenses||[]).forEach(d=> dispList.push({s,d})));
   if(dispList.length){
     dispList.sort((a,b)=> a.d.dateDebut.localeCompare(b.d.dateDebut));
-    html += `<h2>Dispenses</h2><table><thead><tr><th class="name">Élève</th><th>Période</th><th>Type</th><th>Autorisé à ne pas assister</th></tr></thead><tbody>`;
+    html += `<h2>Dispenses</h2><table><thead><tr><th class="name">Élève</th><th>Période</th><th>Type</th><th>Autorisé à ne pas assister</th><th>Commentaire</th></tr></thead><tbody>`;
     dispList.forEach(({s,d})=>{
-      html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td><td>${fmtDateFR(d.dateDebut)} → ${d.dateFin?fmtDateFR(d.dateFin):'indéterminée'}</td><td>${escapeHtml(DISP_TYPE_LABEL[d.type]||d.type)}</td><td>${d.autorise?'Oui':'Non'}</td></tr>`;
+      html += `<tr><td class="name">${escapeHtml(s.nomPrenom)}</td><td>${fmtDateFR(d.dateDebut)} → ${d.dateFin?fmtDateFR(d.dateFin):'indéterminée'}</td><td>${escapeHtml(DISP_TYPE_LABEL[d.type]||d.type)}</td><td>${d.autorise?'Oui':'Non'}</td><td>${escapeHtml(d.comment||'')}</td></tr>`;
     });
     html += `</tbody></table>`;
   }
@@ -2054,6 +2054,7 @@ function renderDispenseModal(){
               ${active?'<span class="badge" style="background:#581c87;color:#fff;margin-left:4px;">En cours</span>':''}
               ${isLocal?'':`<span class="badge" style="background:#e2e8f0;color:#475569;margin-left:4px;">↗ ${escapeHtml(tabName)}</span>`}
               <div style="font-size:.76rem;color:var(--ink-soft);margin-top:3px;">${fmtDateFR(d.dateDebut)} → ${d.dateFin?fmtDateFR(d.dateFin):'indéterminée'} · ${d.autorise?'Dispensé du cours (DISP auto à l’appel)':'Présence au cours requise'}</div>
+              ${d.comment?`<div style="font-size:.76rem;color:var(--ink);margin-top:3px;font-style:italic;">💬 ${escapeHtml(d.comment)}</div>`:''}
             </div>
             ${isLocal?`<button class="btn secondary small" onclick="editDispense('${tabId}','${studentId}','${d.id}')">✎</button> <button class="btn danger small" onclick="deleteDispense('${tabId}','${studentId}','${d.id}')">🗑</button>`:''}
           </div>`;
@@ -2067,12 +2068,14 @@ function renderDispenseModal(){
           <option value="totale" ${editing&&editing.type==='totale'?'selected':''}>Totale</option>
           <option value="partielle" ${editing&&editing.type==='partielle'?'selected':''}>Partielle</option>
           <option value="natation" ${editing&&editing.type==='natation'?'selected':''}>Natation</option>
+          <option value="nonintegre" ${editing&&editing.type==='nonintegre'?'selected':''}>Non intégré</option>
         </select></div>
         <div style="display:flex;align-items:flex-end;">
           <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--ink);font-weight:400;"><input type="checkbox" id="dispAutorise" style="width:auto;" ${editing&&editing.autorise?'checked':''}> Autorisé à ne pas assister au cours</label>
         </div>
       </div>
-      <p class="legend" style="margin:0 0 4px;">Si « Autorisé à ne pas assister au cours » est coché, l'élève sera automatiquement marqué <b>Disp</b> à chaque nouvel appel créé pendant la période de dispense.</p>
+      <div><label>Commentaire (facultatif)</label><textarea id="dispComment" rows="2" style="width:100%;resize:vertical;" placeholder="Précisions sur cette dispense...">${editing?escapeHtml(editing.comment||''):''}</textarea></div>
+      <p class="legend" style="margin:8px 0 4px;">Si « Autorisé à ne pas assister au cours » est coché, l'élève sera automatiquement marqué <b>Disp</b> à chaque nouvel appel créé pendant la période de dispense.</p>
       <div class="modal-foot">
         <button class="btn ghost" onclick="closeModal()">Fermer</button>
         ${editing?`<button class="btn ghost" onclick="cancelEditDispense()">Annuler la modification</button>`:''}
@@ -2101,14 +2104,15 @@ function saveDispense(){
   const dateFin = document.getElementById('dispDateFin').value;
   const type = document.getElementById('dispType').value;
   const autorise = document.getElementById('dispAutorise').checked;
+  const comment = document.getElementById('dispComment').value.trim();
   if(!dateDebut){ alert('La date de début est obligatoire.'); return; }
   if(dateFin && dateFin<dateDebut){ alert('La date de fin doit être postérieure à la date de début.'); return; }
   if(!s.dispenses) s.dispenses = [];
   if(editingDispenseId){
     const d = s.dispenses.find(x=>x.id===editingDispenseId);
-    if(d){ Object.assign(d, {dateDebut, dateFin, type, autorise}); }
+    if(d){ Object.assign(d, {dateDebut, dateFin, type, autorise, comment}); }
   } else {
-    s.dispenses.push({id:uid(), dateDebut, dateFin, type, autorise});
+    s.dispenses.push({id:uid(), dateDebut, dateFin, type, autorise, comment});
   }
   saveState();
   dispensePending = {tabId, studentId};
