@@ -1801,8 +1801,12 @@ function renderApp(){
     }
   }
   if(prevScrollLeft!=null){
-    const newScroller = document.querySelector('#section-content .table-scroll');
-    if(newScroller){ newScroller.scrollLeft = prevScrollLeft; newScroller.scrollTop = prevScrollTop; }
+    const applyScroll = ()=>{
+      const newScroller = document.querySelector('#section-content .table-scroll');
+      if(newScroller){ newScroller.scrollLeft = prevScrollLeft; newScroller.scrollTop = prevScrollTop; }
+    };
+    applyScroll();
+    requestAnimationFrame(()=>{ applyScroll(); requestAnimationFrame(applyScroll); });
   }
   saveNav();
 }
@@ -3077,7 +3081,8 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
       const val = se.marks[s.id] || '';
       const col = val ? LEVEL_COLOR[val] : {bg:'#f1f5f9',fg:'#64748b'};
       const note = (se.notes||{})[s.id];
-      html += `<td><div class="appel-cell"><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleSimpleLevel('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">${val||'·'}</span>${showNumNote?`<button class="add-mini${note!=null&&note!==''?' has-note':''}" title="${note!=null&&note!==''?('Note : '+escapeHtml(String(note))+'/20 — cliquer pour modifier'):'Saisir une note chiffrée'}" onclick="setSimpleSeanceNote('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">N</button>`:''}</div></td>`;
+      const hasNote = note!=null && note!=='';
+      html += `<td><div class="appel-cell"><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleSimpleLevel('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">${val||'·'}</span>${showNumNote?`<button class="add-mini${hasNote?' has-note':''}" style="${hasNote?'width:auto;min-width:20px;border-radius:9px;padding:0 4px;font-size:.68rem;':''}" title="${hasNote?('Note : '+escapeHtml(String(note))+'/20 — cliquer pour modifier'):'Saisir une note chiffrée'}" onclick="setSimpleSeanceNote('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}','${s.id}')">${hasNote?escapeHtml(String(note)):'N'}</button>`:''}</div></td>`;
     });
     const auto = levelAverage(evalObj.seances.map(se=>se.marks[s.id]));
     const override = (evalObj.finalOverride||{})[s.id] || '';
@@ -3273,7 +3278,10 @@ function fitTableScrolls(){
   document.querySelectorAll('.table-scroll').forEach(el=>{
     const top = el.getBoundingClientRect().top;
     const h = Math.max(140, Math.floor(window.innerHeight - top - 12));
+    const savedTop = el.scrollTop, savedLeft = el.scrollLeft;
     el.style.maxHeight = h + 'px';
+    if(el.scrollTop!==savedTop) el.scrollTop = savedTop;
+    if(el.scrollLeft!==savedLeft) el.scrollLeft = savedLeft;
   });
 }
 let fitScheduled = false;
