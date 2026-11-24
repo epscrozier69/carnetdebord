@@ -308,6 +308,7 @@ body.starter-dragging .starter-drop-target{outline:2px dashed rgba(37,99,235,.5)
 .col-count{font-size:.66rem;font-weight:800;background:rgba(255,255,255,.25);border-radius:5px;padding:1px 6px;margin-bottom:2px;display:inline-block;}
 .add-mini{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:transparent;color:#cbd5e1;font-size:.8rem;font-weight:800;line-height:1;border:none;cursor:pointer;padding:0;vertical-align:middle;opacity:.7;transition:.12s;}
 .add-mini:hover{background:#eef2ff;color:var(--primary);opacity:1;}
+.add-mini.has-note{opacity:1;color:#d97706;border:1.5px solid #d97706;background:#fffbeb;}
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:.85rem;flex-shrink:0;transition:.15s;}
 .icon-btn:hover{transform:scale(1.08);}
 .icon-btn.edit{color:var(--primary);border-color:var(--primary-light);}
@@ -477,7 +478,7 @@ const EVAL_CATS = [
 ];
 const EVAL_CAT_COLOR = {
   echauffement:'#0ea5e9', attitude:'#a5d6a7', implication:'#f97316',
-  capacites:'#38bdf8', performance:'#1d4ed8', rolesSociaux:'#8fb89e', recap:'#ef9a9a'
+  capacites:'#38bdf8', performance:'#1d4ed8', rolesSociaux:'#8fb89e', recap:'#ef9a9a', notes:'#be185d'
 };
 const CUSTOM_EVAL_COLORS = ['#7c3aed','#db2777','#0891b2','#d97706','#c026d3','#4f46e5'];
 
@@ -579,6 +580,9 @@ function migrateState(){
     Object.entries(tab.activities||{}).forEach(([actName, act])=>{
       if(act.evaluations && !act.evaluations.rolesSociaux){
         act.evaluations.rolesSociaux = {criteria:[], seances:[]};
+      }
+      if(act.evaluations && !act.evaluations.notes){
+        act.evaluations.notes = {competences: []};
       }
       if(!act.baremes) act.baremes = [];
       if(!act.isConseil && !act.isTheorie && isNatationJourTab(tab)){
@@ -1453,7 +1457,8 @@ function makeEvaluations(){
     capacites: {criteria:[], seances:[]},
     performance: {criteria:[], seances:[]},
     rolesSociaux: {criteria:[], seances:[]},
-    custom: []
+    custom: [],
+    notes: {competences: []}
   };
 }
 function doImportClasses(){
@@ -2645,6 +2650,7 @@ function renderEvaluations(tab, act, activityLabel){
   if(isNatationJourTab(tab)) return renderNatationEvaluations(tab, act, activityLabel);
   const ev = act.evaluations;
   const taekwondo = isTaekwondoTab(tab);
+  const showNotes = taekwondo || tab.niveau==='3';
   const hideEchauffement = (tab.niveau==='6' && activityLabel==='Natation') || taekwondo;
   const cats = taekwondo ? EVAL_CATS.filter(c=>c.key==='attitude'||c.key==='implication') : EVAL_CATS;
   if(taekwondo && ['echauffement','capacites','performance','rolesSociaux'].includes(nav.evalCat)) nav.evalCat = null;
@@ -2660,6 +2666,9 @@ function renderEvaluations(tab, act, activityLabel){
     tabsHtml += `<button class="${nav.evalCat===c.id?'active':''}" style="--cat:${color}" onclick="setNav({evalCat:'${c.id}'})">${escapeHtml(c.title)}</button>`;
   });
   tabsHtml += `<button class="add" onclick="addCustomEval('${tab.id}','${escapeAct(activityLabel)}')">+ Onglet</button>`;
+  if(showNotes){
+    tabsHtml += `<button class="${nav.evalCat==='notes'?'active':''}" style="--cat:${EVAL_CAT_COLOR.notes}" onclick="setNav({evalCat:'notes'})">📝 Notes</button>`;
+  }
   tabsHtml += `<button class="${nav.evalCat==='recap'?'active':''}" style="--cat:${EVAL_CAT_COLOR.recap}" onclick="setNav({evalCat:'recap'})">🏁 Récap</button>`;
   tabsHtml += `</div>`;
 
@@ -2678,6 +2687,8 @@ function renderEvaluations(tab, act, activityLabel){
     body = renderSimpleEval(tab, act, activityLabel, 'performance', ev.performance, 'Performance — '+tab.name, 'Critères informatifs (un simple repère, pas de note par critère) :', EVAL_CAT_COLOR.performance, true);
   } else if(nav.evalCat==='rolesSociaux'){
     body = renderSimpleEval(tab, act, activityLabel, 'rolesSociaux', ev.rolesSociaux, 'Rôles sociaux — '+tab.name, 'Critères informatifs (un simple repère, pas de note par critère) :', EVAL_CAT_COLOR.rolesSociaux, true);
+  } else if(nav.evalCat==='notes' && showNotes){
+    body = renderNotesEval(tab, act, activityLabel);
   } else if(nav.evalCat==='recap'){
     body = renderRecap(tab, act, activityLabel);
   } else {
@@ -2689,6 +2700,83 @@ function renderEvaluations(tab, act, activityLabel){
     }
   }
   return tabsHtml + body;
+}
+
+/* ---- Notes chiffrées (/20) par compétence, pour le contrôle continu (3e, Taekwondo) ---- */
+function renderNotesEval(tab, act, activityLabel){
+  const data = act.evaluations.notes;
+  const students = sortedStudents(tab.students);
+  const color = EVAL_CAT_COLOR.notes;
+  let html = `<div style="background:${lightTint(color)};border-radius:16px;padding:4px;">
+  <div class="card" style="background:transparent;box-shadow:none;--accentbar:linear-gradient(90deg,${color},${shadeColor(color,-24)});">
+    <div class="toolbar">
+      <h2 style="margin:0;flex:1;">Notes — ${escapeHtml(tab.name)}</h2>
+      <button class="btn small" onclick="addNoteCompetence('${tab.id}','${escapeAct(activityLabel)}')">+ Compétence</button>
+    </div>
+    <p class="legend" style="border-left-color:${color};">Saisissez une note chiffrée (/20) et, si besoin, un commentaire pour chaque élève, par compétence évaluée.</p>
+    <div class="table-scroll"><table class="data"${rowFitStyle(students.length)}><thead><tr><th class="num">N°</th><th class="name">Élève</th>`;
+  data.competences.forEach(c=>{
+    html += `<th style="background:${color};min-width:130px;">
+      <div style="font-weight:800;font-size:.72rem;white-space:normal;word-break:break-word;">${escapeHtml(c.title)}</div>
+      <div style="display:flex;gap:4px;justify-content:center;margin-top:3px;">
+        <button class="icon-btn edit" style="width:18px;height:18px;font-size:.55rem;" title="Renommer cette compétence" onclick="renameNoteCompetence('${tab.id}','${escapeAct(activityLabel)}','${c.id}')">✎</button>
+        <button class="th-del" style="position:static;" title="Supprimer cette compétence" onclick="deleteNoteCompetence('${tab.id}','${escapeAct(activityLabel)}','${c.id}')">✕</button>
+      </div>
+    </th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  students.forEach((s,idx)=>{
+    html += `<tr><td class="num">${idx+1}</td><td class="${nameCellClass(idx)}">${escapeHtml(s.nomPrenom)}</td>`;
+    data.competences.forEach(c=>{
+      const v = c.values[s.id] || {};
+      html += `<td style="white-space:nowrap;">
+        <input type="number" min="0" max="20" step="0.5" value="${v.note!=null&&v.note!==''?v.note:''}" placeholder="/20" style="width:54px;text-align:center;border:1px solid var(--border);border-radius:6px;padding:2px;" onchange="setNoteValue('${tab.id}','${escapeAct(activityLabel)}','${c.id}','${s.id}',this.value)">
+        <button class="add-mini${v.comment?' has-note':''}" title="${v.comment?('Commentaire : '+escapeHtml(v.comment)):'Ajouter un commentaire'}" onclick="editNoteComment('${tab.id}','${escapeAct(activityLabel)}','${c.id}','${s.id}')">💬</button>
+      </td>`;
+    });
+    html += `</tr>`;
+  });
+  if(!students.length) html += `<tr><td class="empty" colspan="99">Aucun élève.</td></tr>`;
+  if(!data.competences.length) html += `<tr><td class="empty" colspan="99">Aucune compétence. Cliquez sur « + Compétence ».</td></tr>`;
+  html += `</tbody></table></div></div></div>`;
+  return html;
+}
+function addNoteCompetence(tabId, activityLabel){
+  const title = prompt('Nom de la compétence évaluée :');
+  if(!title) return;
+  const act = findActivity(tabId, activityLabel);
+  act.evaluations.notes.competences.push({id:'comp_'+uid(), title, values:{}});
+  saveState(); renderApp();
+}
+function renameNoteCompetence(tabId, activityLabel, compId){
+  const act = findActivity(tabId, activityLabel);
+  const c = act.evaluations.notes.competences.find(x=>x.id===compId);
+  const title = prompt('Nouveau nom :', c.title);
+  if(!title) return;
+  c.title = title;
+  saveState(); renderApp();
+}
+function deleteNoteCompetence(tabId, activityLabel, compId){
+  if(!confirm('Supprimer définitivement cette compétence et toutes ses notes ?')) return;
+  const act = findActivity(tabId, activityLabel);
+  act.evaluations.notes.competences = act.evaluations.notes.competences.filter(x=>x.id!==compId);
+  saveState(); renderApp();
+}
+function setNoteValue(tabId, activityLabel, compId, studentId, val){
+  const act = findActivity(tabId, activityLabel);
+  const c = act.evaluations.notes.competences.find(x=>x.id===compId);
+  if(!c.values[studentId]) c.values[studentId] = {};
+  c.values[studentId].note = val===''? null : val;
+  saveState();
+}
+function editNoteComment(tabId, activityLabel, compId, studentId){
+  const act = findActivity(tabId, activityLabel);
+  const c = act.evaluations.notes.competences.find(x=>x.id===compId);
+  if(!c.values[studentId]) c.values[studentId] = {};
+  const comment = prompt('Commentaire :', c.values[studentId].comment||'');
+  if(comment===null) return;
+  c.values[studentId].comment = comment;
+  saveState(); renderApp();
 }
 
 function addCustomEval(tabId, activityLabel){
