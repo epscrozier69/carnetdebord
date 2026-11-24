@@ -2371,7 +2371,7 @@ function addActivity(tabId){
   if(!name) return;
   if(tab.activityOrder.includes(name)){ alert('Un onglet porte déjà ce nom.'); return; }
   tab.activityOrder.push(name);
-  tab.activities[name] = {appels:[], evaluations:null, baremes:[]};
+  tab.activities[name] = {appels:[], evaluations: isTaekwondoTab(tab) ? makeEvaluations() : null, baremes:[]};
   saveState();
   setNav({section:'activity', activity:name, activityMode:'appel'});
 }
