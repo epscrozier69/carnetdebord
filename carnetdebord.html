@@ -60,6 +60,7 @@ body{
   flex-direction:column;
   height:100vh;
   height:100dvh;
+  height:var(--app-height, 100dvh);
   overflow:hidden;
   background:
     radial-gradient(1100px 480px at 8% -8%, rgba(67,56,202,.13), transparent 60%),
@@ -3262,6 +3263,12 @@ function renderRecap(tab, act, activityLabel){
 }
 
 /* ============================= INIT ============================= */
+function setAppHeight(){
+  document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+}
+setAppHeight();
+window.addEventListener('resize', setAppHeight);
+window.addEventListener('orientationchange', setAppHeight);
 renderApp();
 updateSyncStatusUI();
 if(syncConfig) pullFromAppsScript();
