@@ -3075,7 +3075,7 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
       <button class="th-del" title="Supprimer cette évaluation" onclick="deleteSimpleSeance('${tab.id}','${escapeAct(activityLabel)}','${key}','${se.id}')">✕</button>
     </th>`;
   });
-  html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th>`;
+  html += `<th style="background:${shadeColor(catColor,70)};color:${catColor};">Note finale</th>`;
   html += `</tr></thead><tbody>`;
   students.forEach((s,idx)=>{
     const showNumNote = showNumNote3e || (taekwondo && studentIsNiveau3(s));
