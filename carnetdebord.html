@@ -180,8 +180,6 @@ header.app-header h1{
   max-height:80vh;
   overflow:auto;
   overflow-anchor:none;
-  border:1px solid var(--border);
-  border-radius:10px;
 }
 .table-scroll::-webkit-scrollbar{width:10px;height:10px;}
 .table-scroll::-webkit-scrollbar-track{background:var(--primary-light);}
@@ -593,15 +591,23 @@ function migrateState(){
         if(act.evaluations===null) act.evaluations = makeEvaluations();
         ensureVolley3eBaremes(act);
       }
+      if(!act.isConseil && !act.isTheorie && isTaekwondoTab(tab) && act.evaluations===null){
+        act.evaluations = makeEvaluations();
+      }
     });
     (tab.students||[]).forEach(s=>{
       if(!s.dispenses) s.dispenses = [];
       s.dispenses.forEach(d=>{ if('photo' in d) delete d.photo; });
       if(s.dateNaissance) s.dateNaissance = fmtDateAny(s.dateNaissance);
     });
-    if(tab.kind==='classe' && tab.niveau && tab.niveau!=='6' && (NIVEAU_ACTIVITIES[tab.niveau]||[]).includes(THEORIE_TAB_NAME) && !tab.activityOrder.includes(THEORIE_TAB_NAME)){
-      tab.activityOrder.push(THEORIE_TAB_NAME);
-      tab.activities[THEORIE_TAB_NAME] = {appels:[], evaluations:{echauffementTheorie:{seances:[]}}, baremes:[], isTheorie:true};
+    if(tab.kind==='classe' && tab.niveau && tab.niveau!=='6' && (NIVEAU_ACTIVITIES[tab.niveau]||[]).includes(THEORIE_TAB_NAME)){
+      if(!tab.activityOrder.includes(THEORIE_TAB_NAME)){
+        tab.activityOrder.unshift(THEORIE_TAB_NAME);
+        tab.activities[THEORIE_TAB_NAME] = {appels:[], evaluations:{echauffementTheorie:{seances:[]}}, baremes:[], isTheorie:true};
+      } else {
+        const idx = tab.activityOrder.indexOf(THEORIE_TAB_NAME);
+        if(idx!==0){ tab.activityOrder.splice(idx,1); tab.activityOrder.unshift(THEORIE_TAB_NAME); }
+      }
     }
     if(tab.kind==='classe' && !tab.activityOrder.includes(CONSEIL_TAB_NAME)){
       tab.activityOrder.unshift(CONSEIL_TAB_NAME);
@@ -1411,7 +1417,12 @@ function ensureTab(id, name, kind, niveau, fields){
     state.tabs[id] = {
       id, name, kind, niveau: niveau||null, fields,
       students: [],
-      activityOrder: kind==='classe' ? [CONSEIL_TAB_NAME, ...(NIVEAU_ACTIVITIES[niveau] || ['Suivi'])] : ['Appel'],
+      activityOrder: kind==='classe' ? (()=>{
+        const order = [CONSEIL_TAB_NAME, ...(NIVEAU_ACTIVITIES[niveau] || ['Suivi'])];
+        const idx = order.indexOf(THEORIE_TAB_NAME);
+        if(idx>0){ order.splice(idx,1); order.unshift(THEORIE_TAB_NAME); }
+        return order;
+      })() : ['Appel'],
       activities: {}
     };
     state.order.push(id);
@@ -1741,10 +1752,13 @@ function renderApp(){
   html += `<button class="${elevesActive?'active':''}" ${elevesStyle} onclick="setNav({section:'eleves'})">👥 Élèves</button>`;
   tab.activityOrder.forEach(actName=>{
     const isConseilBtn = actName===CONSEIL_TAB_NAME;
+    const isTheorieBtn = actName===THEORIE_TAB_NAME;
     const active = nav.section==='activity'&&nav.activity===actName;
     let actStyle = '';
     if(isConseilBtn){
       actStyle = `style="${active?'background:linear-gradient(135deg,#0f766e,#134e4a);border-color:#0f766e;color:#fff;':'background:#ccfbf1;border-color:#5eead4;color:#115e59;'}"`;
+    } else if(isTheorieBtn){
+      actStyle = `style="${active?'background:linear-gradient(135deg,#b45309,#78350f);border-color:#b45309;color:#fff;':'background:#fef3c7;border-color:#fcd34d;color:#78350f;'}"`;
     } else if(active && tabTone){
       actStyle = `style="background:linear-gradient(135deg,${tabTone},${shadeColor(tabTone,-24)});border-color:${tabTone};color:#fff;"`;
     }
@@ -2632,10 +2646,13 @@ function cycleNatationSkillGrade(tabId, activityLabel, skillId, studentId){
 function renderEvaluations(tab, act, activityLabel){
   if(isNatationJourTab(tab)) return renderNatationEvaluations(tab, act, activityLabel);
   const ev = act.evaluations;
-  const hideEchauffement = tab.niveau==='6' && activityLabel==='Natation';
+  const taekwondo = isTaekwondoTab(tab);
+  const hideEchauffement = (tab.niveau==='6' && activityLabel==='Natation') || taekwondo;
+  const cats = taekwondo ? EVAL_CATS.filter(c=>c.key==='attitude'||c.key==='implication') : EVAL_CATS;
+  if(taekwondo && ['echauffement','capacites','performance','rolesSociaux'].includes(nav.evalCat)) nav.evalCat = null;
   if(!nav.evalCat || (hideEchauffement && nav.evalCat==='echauffement')) nav.evalCat = hideEchauffement ? 'attitude' : 'echauffement';
   let tabsHtml = `<div class="tabbar sub3">`;
-  EVAL_CATS.forEach(c=>{
+  cats.forEach(c=>{
     if(c.key==='echauffement' && hideEchauffement) return;
     const label = (c.key==='echauffement' && tab.niveau!=='6') ? 'Échauffement pratique' : c.label;
     tabsHtml += `<button class="${nav.evalCat===c.key?'active':''}" style="--cat:${EVAL_CAT_COLOR[c.key]}" onclick="setNav({evalCat:'${c.key}'})">${escapeHtml(label)}</button>`;
