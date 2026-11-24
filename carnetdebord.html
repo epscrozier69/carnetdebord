@@ -1091,6 +1091,9 @@ function appelShowsClasseColumn(tab){
 function isTaekwondoTab(tab){
   return tab.kind!=='classe' && normalize(tab.name).includes('taekwondo');
 }
+function studentIsNiveau3(s){
+  return /^3/.test(normalize(s.classe||''));
+}
 function dateDayOfWeek(dateISO){
   const [y,m,d] = dateISO.split('-').map(Number);
   return new Date(y, m-1, d).getDay();
@@ -3049,7 +3052,8 @@ function toggleSimpleDateOrder(tabId, activityLabel, key){
 function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHtml, catColor, allowCriteriaEdit){
   const students = sortedStudents(tab.students);
   const isCustom = key.startsWith('custom_');
-  const showNumNote = isTaekwondoTab(tab) || tab.niveau==='3';
+  const taekwondo = isTaekwondoTab(tab);
+  const showNumNote3e = tab.niveau==='3';
   const dateOrder = getSimpleDateOrder(tab.id, activityLabel, key);
   const seancesSorted = [...evalObj.seances].sort((a,b)=> dateOrder==='desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
   let html = `<div style="background:${lightTint(catColor)};border-radius:16px;padding:4px;">
@@ -3074,6 +3078,7 @@ function renderSimpleEval(tab, act, activityLabel, key, evalObj, title, legendHt
   html += `<th style="background:${FIXED_HEADER_BG}">Note finale</th>`;
   html += `</tr></thead><tbody>`;
   students.forEach((s,idx)=>{
+    const showNumNote = showNumNote3e || (taekwondo && studentIsNiveau3(s));
     html += `<tr><td class="num">${idx+1}</td><td class="${nameCellClass(idx)}">${escapeHtml(s.nomPrenom)}</td>`;
     seancesSorted.forEach(se=>{
       const presence = presenceForDate(act, se.date, s.id);
