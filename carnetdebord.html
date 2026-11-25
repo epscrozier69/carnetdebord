@@ -1812,6 +1812,7 @@ function renderApp(){
       target.innerHTML = renderActivity(tab, act, nav.activity);
     }
   }
+  fitTableScrolls();
   const applyScroll = ()=>{
     if(prevScrollLeft!=null){
       const newScroller = document.querySelector('#section-content .table-scroll');
