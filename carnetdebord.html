@@ -380,7 +380,7 @@ const CONSEIL_MENTIONS = [
 ];
 const NIVEAU_ACTIVITIES = {
   '6': ['Natation','Rugby','Biathlon','Danse','Lutte'],
-  '4': ['Tennis de table','Acrosport','Ultimate','Volley','Course de haies', THEORIE_TAB_NAME],
+  '4': ['TT','ACro','Ultimate','VB','Haies', THEORIE_TAB_NAME],
   '3': ['Ultimate','Volley','Acrosport','Badminton','Épreuves combinées']
 };
 
@@ -578,8 +578,19 @@ const VOLLEY_3E_PROJET_COLLECTIF_EVAL = {
 function ensureSeanceNotes(evalObj){
   (evalObj.seances||[]).forEach(se=>{ if(!se.notes) se.notes = {}; });
 }
+const ACT_RENAME_4E = {'Tennis de table':'TT','Acrosport':'ACro','Volley':'VB','Course de haies':'Haies'};
 function migrateState(){
   Object.values(state.tabs).forEach(tab=>{
+    if(tab.kind==='classe' && tab.niveau==='4'){
+      Object.entries(ACT_RENAME_4E).forEach(([oldName,newName])=>{
+        const idx = tab.activityOrder.indexOf(oldName);
+        if(idx>=0) tab.activityOrder[idx] = newName;
+        if(tab.activities[oldName]){
+          tab.activities[newName] = tab.activities[oldName];
+          delete tab.activities[oldName];
+        }
+      });
+    }
     Object.entries(tab.activities||{}).forEach(([actName, act])=>{
       if(act.evaluations && !act.evaluations.rolesSociaux){
         act.evaluations.rolesSociaux = {criteria:[], seances:[]};
@@ -1011,8 +1022,10 @@ function sortedStudentsByClasse(students){
 }
 function isNatationJourTab(tab){
   if(tab.kind==='classe') return false;
-  const n = normalize(tab.name);
-  return n.includes('natation') && (n.includes('lundi') || n.includes('vendredi'));
+  const words = normalize(tab.name).split(' ');
+  const hasNat = words.some(w=>w.startsWith('nat'));
+  const hasJour = words.some(w=>w.startsWith('lu')||w.startsWith('ve'));
+  return hasNat && hasJour;
 }
 function natationDefaultAttitude(){ return {criteria:['Ponctuel','Respectueux','Attentif','Volontaire','Sécuritaire','Tenue adaptée'], seances:[]}; }
 function natationDefaultImplication(){ return {criteria:['Implication'], seances:[]}; }
