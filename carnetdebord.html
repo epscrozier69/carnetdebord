@@ -3299,7 +3299,7 @@ function fitTableScrolls(){
     const top = el.getBoundingClientRect().top;
     const h = Math.max(140, Math.floor(vh - top - 6));
     const savedTop = el.scrollTop, savedLeft = el.scrollLeft;
-    el.style.maxHeight = h + 'px';
+    el.style.height = h + 'px';
     if(el.scrollTop!==savedTop) el.scrollTop = savedTop;
     if(el.scrollLeft!==savedLeft) el.scrollLeft = savedLeft;
   });
