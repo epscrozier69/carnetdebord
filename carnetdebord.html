@@ -3290,10 +3290,14 @@ function renderRecap(tab, act, activityLabel){
 }
 
 /* ============================= INIT ============================= */
+function viewportHeight(){
+  return window.visualViewport ? window.visualViewport.height : window.innerHeight;
+}
 function fitTableScrolls(){
+  const vh = viewportHeight();
   document.querySelectorAll('.table-scroll').forEach(el=>{
     const top = el.getBoundingClientRect().top;
-    const h = Math.max(140, Math.floor(window.innerHeight - top - 12));
+    const h = Math.max(140, Math.floor(vh - top - 6));
     const savedTop = el.scrollTop, savedLeft = el.scrollLeft;
     el.style.maxHeight = h + 'px';
     if(el.scrollTop!==savedTop) el.scrollTop = savedTop;
@@ -3309,6 +3313,10 @@ function scheduleFit(){
 new MutationObserver(scheduleFit).observe(document.getElementById('app'), {childList:true, subtree:true});
 window.addEventListener('resize', scheduleFit);
 window.addEventListener('orientationchange', scheduleFit);
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', scheduleFit);
+  window.visualViewport.addEventListener('scroll', scheduleFit);
+}
 renderApp();
 scheduleFit();
 updateSyncStatusUI();
