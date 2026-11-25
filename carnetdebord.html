@@ -380,7 +380,7 @@ const CONSEIL_MENTIONS = [
 ];
 const NIVEAU_ACTIVITIES = {
   '6': ['Natation','Rugby','Biathlon','Danse','Lutte'],
-  '4': ['TT','ACro','Ultimate','VB','Haies', THEORIE_TAB_NAME],
+  '4': ['TT','ACRO','Ultimate','VB','Haies', THEORIE_TAB_NAME],
   '3': ['Ultimate','Volley','Acrosport','Badminton','Épreuves combinées']
 };
 
@@ -578,11 +578,12 @@ const VOLLEY_3E_PROJET_COLLECTIF_EVAL = {
 function ensureSeanceNotes(evalObj){
   (evalObj.seances||[]).forEach(se=>{ if(!se.notes) se.notes = {}; });
 }
-const ACT_RENAME_4E = {'Tennis de table':'TT','Acrosport':'ACro','Volley':'VB','Course de haies':'Haies'};
+const ACT_RENAME_4E = {'Tennis de table':'TT','Acrosport':'ACRO','ACro':'ACRO','Volley':'VB','Course de haies':'Haies'};
 function migrateState(){
   Object.values(state.tabs).forEach(tab=>{
     if(tab.kind==='classe' && tab.niveau==='4'){
       Object.entries(ACT_RENAME_4E).forEach(([oldName,newName])=>{
+        if(oldName===newName) return;
         const idx = tab.activityOrder.indexOf(oldName);
         if(idx>=0) tab.activityOrder[idx] = newName;
         if(tab.activities[oldName]){
