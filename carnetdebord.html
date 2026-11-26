@@ -1829,6 +1829,7 @@ function renderApp(){
     }
   }
   fitTableScrolls();
+  setTimeout(fitTableScrolls, 300);
   const applyScroll = ()=>{
     if(prevScrollLeft!=null){
       const newScroller = document.querySelector('#section-content .table-scroll');
@@ -1841,10 +1842,7 @@ function renderApp(){
   saveNav();
 }
 function rowFitStyle(rowCount){
-  if(!rowCount) return '';
-  const pad = Math.min(14, 90/rowCount);
-  const font = Math.min(pad*0.3, 5);
-  return ` style="--row-extra-pad:${pad.toFixed(1)}px;--row-extra-font:${font.toFixed(1)}px;"`;
+  return '';
 }
 let highlightedRow = null;
 document.addEventListener('click', (e)=>{
@@ -3291,22 +3289,54 @@ function renderRecap(tab, act, activityLabel){
 function viewportHeight(){
   return window.visualViewport ? window.visualViewport.height : window.innerHeight;
 }
+function reserveBelow(el, stopEl){
+  let reserve = 0;
+  let node = el;
+  while(node && node !== stopEl && node !== document.body){
+    const cs = getComputedStyle(node);
+    reserve += parseFloat(cs.paddingBottom)||0;
+    reserve += parseFloat(cs.marginBottom)||0;
+    reserve += parseFloat(cs.borderBottomWidth)||0;
+    node = node.parentElement;
+  }
+  if(node===stopEl){
+    reserve += parseFloat(getComputedStyle(stopEl).paddingBottom)||0;
+  }
+  return reserve;
+}
+function autoShrinkRows(el, boxHeight){
+  const table = el.querySelector('table.data');
+  if(!table) return;
+  table.style.setProperty('--row-extra-pad','0px');
+  table.style.setProperty('--row-extra-font','0px');
+  if(table.scrollHeight <= boxHeight) return;
+  table.style.setProperty('--row-extra-pad','-2px');
+  if(table.scrollHeight <= boxHeight) return;
+  let fontDelta = 0;
+  for(let i=0;i<6 && table.scrollHeight>boxHeight && fontDelta>-3;i++){
+    fontDelta -= 0.5;
+    table.style.setProperty('--row-extra-font', fontDelta+'px');
+  }
+}
 function fitTableScrolls(){
   const vh = viewportHeight();
+  const app = document.getElementById('app');
   document.querySelectorAll('.table-scroll').forEach(el=>{
     const top = el.getBoundingClientRect().top;
-    const h = Math.max(140, Math.floor(vh - top - 6));
+    const reserve = reserveBelow(el.parentElement, app) + 2;
+    const h = Math.max(140, Math.floor(vh - top - reserve));
     const savedTop = el.scrollTop, savedLeft = el.scrollLeft;
     el.style.height = h + 'px';
     if(el.scrollTop!==savedTop) el.scrollTop = savedTop;
     if(el.scrollLeft!==savedLeft) el.scrollLeft = savedLeft;
+    autoShrinkRows(el, h);
   });
 }
 let fitScheduled = false;
 function scheduleFit(){
   if(fitScheduled) return;
   fitScheduled = true;
-  requestAnimationFrame(()=>{ fitScheduled = false; fitTableScrolls(); });
+  requestAnimationFrame(()=>{ fitScheduled = false; fitTableScrolls(); setTimeout(fitTableScrolls, 300); });
 }
 new MutationObserver(scheduleFit).observe(document.getElementById('app'), {childList:true, subtree:true});
 window.addEventListener('resize', scheduleFit);
