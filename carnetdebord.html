@@ -3289,21 +3289,6 @@ function renderRecap(tab, act, activityLabel){
 function viewportHeight(){
   return window.visualViewport ? window.visualViewport.height : window.innerHeight;
 }
-function reserveBelow(el, stopEl){
-  let reserve = 0;
-  let node = el;
-  while(node && node !== stopEl && node !== document.body){
-    const cs = getComputedStyle(node);
-    reserve += parseFloat(cs.paddingBottom)||0;
-    reserve += parseFloat(cs.marginBottom)||0;
-    reserve += parseFloat(cs.borderBottomWidth)||0;
-    node = node.parentElement;
-  }
-  if(node===stopEl){
-    reserve += parseFloat(getComputedStyle(stopEl).paddingBottom)||0;
-  }
-  return reserve;
-}
 function autoShrinkRows(el, boxHeight){
   const table = el.querySelector('table.data');
   if(!table) return;
@@ -3322,10 +3307,12 @@ function fitTableScrolls(){
   const vh = viewportHeight();
   const app = document.getElementById('app');
   document.querySelectorAll('.table-scroll').forEach(el=>{
-    const top = el.getBoundingClientRect().top;
-    const reserve = reserveBelow(el.parentElement, app) + 2;
-    const h = Math.max(140, Math.floor(vh - top - reserve));
     const savedTop = el.scrollTop, savedLeft = el.scrollLeft;
+    const prevHeight = el.style.height;
+    el.style.height = 'auto';
+    const top = el.getBoundingClientRect().top;
+    const gapBelow = app.getBoundingClientRect().bottom - el.getBoundingClientRect().bottom;
+    const h = Math.max(140, Math.floor(vh - top - gapBelow - 1));
     el.style.height = h + 'px';
     if(el.scrollTop!==savedTop) el.scrollTop = savedTop;
     if(el.scrollLeft!==savedLeft) el.scrollLeft = savedLeft;
