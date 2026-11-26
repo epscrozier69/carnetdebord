@@ -3294,6 +3294,17 @@ function autoShrinkRows(el, boxHeight){
   if(!table) return;
   table.style.setProperty('--row-extra-pad','0px');
   table.style.setProperty('--row-extra-font','0px');
+  const rows = table.rows.length;
+  const diff = boxHeight - table.scrollHeight;
+  if(rows && diff > 4){
+    const padDelta = Math.min(14, diff/(rows*2));
+    table.style.setProperty('--row-extra-pad', padDelta.toFixed(1)+'px');
+    if(boxHeight - table.scrollHeight > 2){
+      const fontDelta = Math.min(5, padDelta*0.3);
+      table.style.setProperty('--row-extra-font', fontDelta.toFixed(1)+'px');
+    }
+    return;
+  }
   if(table.scrollHeight <= boxHeight) return;
   table.style.setProperty('--row-extra-pad','-2px');
   if(table.scrollHeight <= boxHeight) return;
