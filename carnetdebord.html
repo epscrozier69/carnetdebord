@@ -3303,15 +3303,6 @@ function autoShrinkRows(el, boxHeight){
       const fontDelta = Math.min(5, padDelta*0.3);
       table.style.setProperty('--row-extra-font', fontDelta.toFixed(1)+'px');
     }
-    return;
-  }
-  if(table.scrollHeight <= boxHeight) return;
-  table.style.setProperty('--row-extra-pad','-2px');
-  if(table.scrollHeight <= boxHeight) return;
-  let fontDelta = 0;
-  for(let i=0;i<6 && table.scrollHeight>boxHeight && fontDelta>-3;i++){
-    fontDelta -= 0.5;
-    table.style.setProperty('--row-extra-font', fontDelta+'px');
   }
 }
 function fitTableScrolls(){
