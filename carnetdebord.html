@@ -375,7 +375,7 @@ table.data td.name.name-highlight{background:var(--primary-light)!important;colo
 
 <script>
 /* ============================= CONFIG ============================= */
-const BUILD_TAG = '2026-11-27-04';
+const BUILD_TAG = '2026-11-27-05';
 const THEORIE_TAB_NAME = 'Échauffement théorique';
 const CONSEIL_TAB_NAME = 'Conseil de classe';
 const CONSEIL_MENTIONS = [
@@ -3341,6 +3341,7 @@ function scheduleFit(){
 new MutationObserver(scheduleFit).observe(document.getElementById('app'), {childList:true, subtree:true});
 window.addEventListener('resize', scheduleFit);
 window.addEventListener('orientationchange', scheduleFit);
+window.addEventListener('scroll', scheduleFit, {passive:true});
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize', scheduleFit);
   window.visualViewport.addEventListener('scroll', scheduleFit);
