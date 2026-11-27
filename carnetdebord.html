@@ -3287,7 +3287,7 @@ function renderRecap(tab, act, activityLabel){
 
 /* ============================= INIT ============================= */
 function viewportHeight(){
-  return window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  return document.documentElement.clientHeight || window.innerHeight;
 }
 function autoShrinkRows(el, boxHeight){
   const table = el.querySelector('table.data');
@@ -3297,10 +3297,10 @@ function autoShrinkRows(el, boxHeight){
   const rows = table.rows.length;
   const diff = boxHeight - table.scrollHeight;
   if(rows && diff > 4){
-    const padDelta = Math.min(14, diff/(rows*2));
+    const padDelta = Math.min(60, diff/(rows*2));
     table.style.setProperty('--row-extra-pad', padDelta.toFixed(1)+'px');
     if(boxHeight - table.scrollHeight > 2){
-      const fontDelta = Math.min(5, padDelta*0.3);
+      const fontDelta = Math.min(22, padDelta*0.45);
       table.style.setProperty('--row-extra-font', fontDelta.toFixed(1)+'px');
     }
   }
