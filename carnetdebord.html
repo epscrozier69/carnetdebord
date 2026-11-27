@@ -354,7 +354,7 @@ table.data td.name.name-highlight{background:var(--primary-light)!important;colo
 </head>
 <body>
 <header class="app-header">
-  <h1>🏐 EPS Joliot Curie — Carnet de bord</h1>
+  <h1>🏐 EPS Joliot Curie — Carnet de bord <span id="buildTag" style="font-size:.6rem;opacity:.55;font-weight:400;vertical-align:middle;"></span></h1>
   <button class="hbtn" id="syncStatusBtn" onclick="openSyncModal()">🔄 Synchro : non configurée</button>
   <button class="hbtn primary2" onclick="openImportModal()">+ Importer une classe / un groupe</button>
   <button class="hbtn" onclick="exportBackup()">💾 Exporter sauvegarde</button>
@@ -368,6 +368,7 @@ table.data td.name.name-highlight{background:var(--primary-light)!important;colo
 
 <script>
 /* ============================= CONFIG ============================= */
+const BUILD_TAG = '2026-11-27-01';
 const THEORIE_TAB_NAME = 'Échauffement théorique';
 const CONSEIL_TAB_NAME = 'Conseil de classe';
 const CONSEIL_MENTIONS = [
@@ -3336,6 +3337,8 @@ if(window.visualViewport){
 }
 renderApp();
 scheduleFit();
+const buildTagEl = document.getElementById('buildTag');
+if(buildTagEl) buildTagEl.textContent = BUILD_TAG;
 updateSyncStatusUI();
 if(syncConfig) pullFromAppsScript();
 setInterval(()=>{ if(syncConfig && !syncState.busy) pullFromAppsScript(); }, 60000);
