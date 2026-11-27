@@ -71,9 +71,7 @@ header.app-header{
   color:#fff;
   padding:7px 14px;
   display:flex;
-  flex-wrap:nowrap;
-  overflow-x:auto;
-  -webkit-overflow-scrolling:touch;
+  flex-wrap:wrap;
   align-items:center;
   gap:8px;
   position:sticky;top:0;z-index:50;
@@ -377,7 +375,7 @@ table.data td.name.name-highlight{background:var(--primary-light)!important;colo
 
 <script>
 /* ============================= CONFIG ============================= */
-const BUILD_TAG = '2026-11-27-02';
+const BUILD_TAG = '2026-11-27-04';
 const THEORIE_TAB_NAME = 'Échauffement théorique';
 const CONSEIL_TAB_NAME = 'Conseil de classe';
 const CONSEIL_MENTIONS = [
@@ -2664,7 +2662,10 @@ function renderNatationCapacitesPerfGrid(tab, act, activityLabel){
   students.forEach((s,idx)=>{
     html += `<tr><td class="num">${idx+1}</td><td class="${nameCellClass(idx)}">${escapeHtml(s.nomPrenom)}</td>`;
     skills.forEach(sk=>{
-      const val = sk.seances[0].marks[s.id] || '';
+      const se = sk.seances[0];
+      const presence = presenceForDate(act, se.date, s.id);
+      if(presenceBlocksGrading(presence, sk.id)){ html += `<td>${renderAttendanceOverride(presence)}</td>`; return; }
+      const val = se.marks[s.id] || '';
       const col = val ? LEVEL_COLOR[val] : {bg:'#f1f5f9',fg:'#64748b'};
       html += `<td><span class="cell-click" style="background:${col.bg};color:${col.fg}" onclick="cycleNatationSkillGrade('${tab.id}','${escapeAct(activityLabel)}','${sk.id}','${s.id}')">${val||'·'}</span></td>`;
     });
